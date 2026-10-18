@@ -151,12 +151,12 @@ const THRILLER = {
   dur: 42,
   anchor: 27.79,
   period: 0.5088,
-  hit: 3.29,
+  hit: 3.4,
   end: 38.5,
   fade: [37.4, 38.4],
   dips: [],
   tagline: 'They are made of sticks',
-  lightning: [[3.29, 1], [14.1, 0.75], [27.79, 0.55], [35.93, 0.5]],
+  lightning: [[3.4, 1], [14.1, 0.75], [27.79, 0.55], [35.93, 0.5]],
   captions: [],
   shots: [
     {

@@ -14,16 +14,19 @@ await page.goto(`http://localhost:8613/?reel=${name}`);
 await page.waitForFunction(() => window.reelReady, null, { timeout: 180000, polling: 500 });
 const info = await page.evaluate(() => window.reelInfo);
 const t0 = Date.now();
-for (let i = 0; i < info.frames; i++) {
+const [fa, fb] = (process.env.FRAMES || `0-${info.frames - 1}`).split('-').map(Number);
+for (let i = 0; i <= fb; i++) {
+  if (i < fa) { await page.evaluate((i) => { window.frame(i, 0.1); }, i); continue; }
   const url = await page.evaluate((i) => window.frame(i, 0.93), i);
   fs.writeFileSync(`${dir}/f_${String(i).padStart(4, '0')}.jpg`, Buffer.from(url.split(',')[1], 'base64'));
   if (i % 150 === 0) console.log(name, i, '/', info.frames, Math.round((Date.now() - t0) / 1000) + 's');
 }
 await browser.close();
+if (process.env.NO_ENCODE) process.exit(0);
 const out = `${root}/Reels`;
 const base = `Kindling_${name[0].toUpperCase()}${name.slice(1)}_reel`;
 const fadeOut = info.dur - 2.6;
 execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(info.fps), '-i', `${dir}/f_%04d.jpg`, '-ss', String(info.offset), '-t', String(info.dur), '-i', `${root}/${info.song}`,
-  '-filter:a', `afade=t=in:st=0:d=0.25,afade=t=out:st=${fadeOut}:d=2.6`, '-map', '0:v', '-map', '1:a', '-c:v', 'libx264', '-preset', 'slow', '-crf', '17', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart', `${out}/${base}.mp4`]);
-execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(info.fps), '-i', `${dir}/f_%04d.jpg`, '-c:v', 'libx264', '-preset', 'slow', '-crf', '17', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', `${out}/${base}_silent.mp4`]);
+  '-filter:a', `afade=t=in:st=0:d=0.25,afade=t=out:st=${fadeOut}:d=2.6`, '-map', '0:v', '-map', '1:a', '-c:v', 'libx264', '-preset', 'slow', '-crf', '20', '-maxrate', '16M', '-bufsize', '32M', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart', `${out}/${base}.mp4`]);
+execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(info.fps), '-i', `${dir}/f_%04d.jpg`, '-c:v', 'libx264', '-preset', 'slow', '-crf', '20', '-maxrate', '16M', '-bufsize', '32M', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', `${out}/${base}_silent.mp4`]);
 console.log('done', name, Math.round((Date.now() - t0) / 1000) + 's');
