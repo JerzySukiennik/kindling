@@ -96,6 +96,35 @@ export function createProps(scene, assets) {
     cim.setMatrixAt(i, m.compose(p.set(c.x, c.y, c.z), q.identity(), s.set(c.r, c.h, c.r)));
     fim.setMatrixAt(i, m.compose(p.set(c.x, c.y + c.h, c.z), q.identity(), s.set(0.011, 0.03, 0.011)));
   });
+  const candleM = [];
+  const flameM = [];
+  for (let i = 0; i < candles.length; i++) {
+    candleM.push(cim.instanceMatrix.array.slice(i * 16, i * 16 + 16));
+    flameM.push(fim.instanceMatrix.array.slice(i * 16, i * 16 + 16));
+  }
+  const knocked = new Uint8Array(candles.length);
+  const zeroM = new THREE.Matrix4().makeScale(0, 0, 0);
+  out.knockCandles = (zFront) => {
+    let changed = false;
+    candles.forEach((c, i) => {
+      if (!knocked[i] && Math.abs(c.x) < 13.4 && c.z > -3 && c.z < zFront) {
+        knocked[i] = 1;
+        cim.setMatrixAt(i, zeroM);
+        fim.setMatrixAt(i, zeroM);
+        changed = true;
+      }
+    });
+    if (changed) { cim.instanceMatrix.needsUpdate = true; fim.instanceMatrix.needsUpdate = true; }
+  };
+  out.restoreCandles = () => {
+    knocked.fill(0);
+    for (let i = 0; i < candles.length; i++) {
+      cim.instanceMatrix.array.set(candleM[i], i * 16);
+      fim.instanceMatrix.array.set(flameM[i], i * 16);
+    }
+    cim.instanceMatrix.needsUpdate = true;
+    fim.instanceMatrix.needsUpdate = true;
+  };
   cim.castShadow = false;
   cim.receiveShadow = true;
   cim.computeBoundingSphere();
@@ -173,7 +202,7 @@ export function createProps(scene, assets) {
 
   const lan = assets.models.lantern[0];
   lan.material.color.setRGB(0.6, 0.55, 0.5);
-  const lanSpots = [{ x: -11.5, z: 11.0 }, { x: 11.2, z: 11.3 }, { x: CRYPT.x + 3.4, z: CRYPT.z }, { x: -12.6, z: 0.6 }, { x: 12.8, z: 0.4 }];
+  const lanSpots = [{ x: -13.9, z: 11.0 }, { x: 13.8, z: 11.3 }, { x: CRYPT.x + 3.4, z: CRYPT.z }, { x: -13.9, z: 0.6 }, { x: 13.9, z: 0.4 }];
   const glassMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(4.2, 2.0, 0.6) });
   const glassGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.09, 8);
   for (const ls of lanSpots) {

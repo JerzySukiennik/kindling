@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { groundHeight, SPAWN_Z, BARRIER_Z, BARRIER_STOP_Z, PIT, BARRIER_HALF_W, FIELD } from '../world/layout.js';
 import { U } from '../world/globals.js';
 import { TYPES, THICK } from './monster.js';
+import { CENTER_HALF, BARRIER_BACK, BARRIER_FRONT } from './barrier.js';
 import { GRAVITY, JUMP_V } from './player.js';
 
 const CANDY_KEY = 'kindling.candy';
@@ -95,6 +96,18 @@ export class Game {
       for (let x = -BARRIER_HALF_W; x <= BARRIER_HALF_W; x += 2) this.particles.dust(this._v.set(x, groundHeight(x, BARRIER_Z) + 0.1, BARRIER_Z + 0.5), 2, 1.2, 1.2);
     };
     this.barrier.events.arrive = () => this.launchWave();
+    this.barrier.events.plow = () => {
+      this.audio.rumble(this._v.set(0, 0.5, 4), 2.6, 1.2);
+      this.player.shake = Math.max(this.player.shake, 0.6);
+    };
+    this.barrier.events.dump = () => {
+      this.debris.endWave();
+      this.phase = 'burn';
+      this.timer = 3.5;
+      this.audio.knock(this._v.set(0, 0.5, PIT.z0), 1);
+      for (let x = -CENTER_HALF; x <= CENTER_HALF; x += 1.2) this.particles.embers(this._v.set(x, groundHeight(x, PIT.z0 + 1), PIT.z0 + 1), 3, 0.8, 2.5);
+    };
+    this.barrier.events.sunk = () => this.props && this.props.restoreCandles();
     this.debris.onBurned = (c) => {
       this.bonfire.feed(c.sticks);
       this.stats.sticks += c.sticks;
@@ -128,9 +141,8 @@ export class Game {
     this.gunHeat = 0;
     this.overheat = false;
     this.player.reset();
-    this.barrier.state = 'hidden';
-    this.barrier.y = -3.7;
-    this.barrier.z = BARRIER_Z;
+    this.barrier.reset();
+    if (this.props) this.props.restoreCandles();
     this.queue = [];
     this.lastSpawn = null;
     this.sweepDelay = -1;
@@ -254,11 +266,18 @@ export class Game {
         break;
       }
       case 'wave': {
-        const w = this.debris.wave;
-        if (w && w.z > PIT.z1 + w.length + 1.5) {
-          this.debris.endWave();
-          this.phase = 'burn';
-          this.timer = 3.2;
+        this.hud.setStatus('');
+        const b = this.barrier;
+        if (b.plowing) {
+          const d = Math.abs(this.player.pos.z - b.z);
+          this.player.shake = Math.max(this.player.shake, 0.25 + Math.max(0, 1 - d / 12) * 0.5);
+          if (this.props) this.props.knockCandles(b.z + BARRIER_FRONT + (this.debris.wave ? this.debris.wave.length : 0));
+          for (let i = 0; i < 4; i++) {
+            const x = (Math.random() - 0.5) * 2 * CENTER_HALF;
+            const p = this._v.set(x, groundHeight(x, b.z + 0.6) + 0.04, b.z + 0.62);
+            this.particles.sparks(p, null, 1, null, 2.5);
+            if (i === 0) this.particles.dust(p, 1, 0.6, 0.6);
+          }
         }
         break;
       }
@@ -290,40 +309,32 @@ export class Game {
 
   launchWave() {
     const pile = this.debris.fieldCount();
-    let front = BARRIER_STOP_Z + 0.6;
-    for (const c of this.debris.chunks) {
-      if (c.state !== 'phys') continue;
-      const p = this.debris.chunkPos(c, this._v);
-      if (p.z < 1.5 && p.z > front - 2) front = Math.max(front, p.z + 0.3);
-    }
-    const height = THREE.MathUtils.clamp(0.42 + pile * 0.0055, 0.45, 1.2);
-    const length = THREE.MathUtils.clamp(1.5 + pile * 0.012, 1.6, 3.4);
-    const speed = 8.6;
-    this.debris.startWave(front, speed, height, length);
+    const height = Math.min(0.9, 0.36 + this.round * 0.045 + pile * 0.0004);
+    const length = Math.min(2.6, 0.95 + this.round * 0.11 + pile * 0.001);
+    this.debris.startWave(() => this.barrier.z + BARRIER_FRONT + length, this.barrier.plowSpeed, height, length, CENTER_HALF - 0.6);
     this.phase = 'wave';
     this.player.shake = Math.max(this.player.shake, 0.8);
-    this.audio.whoosh(1);
-    this.audio.knock(this._v.set(0, 0.5, front), 1);
+    this.audio.knock(this._v.set(0, 0.5, BARRIER_STOP_Z), 1);
+    if (this.round === 1) this.hud.message('Jump!', 'Space to jump over the barrier', 2.4);
     for (let x = -BARRIER_HALF_W + 1; x < BARRIER_HALF_W; x += 1.5) {
+      if (Math.abs(x) < CENTER_HALF) continue;
       this.particles.sparks(this._v.set(x, groundHeight(x, BARRIER_STOP_Z) + 0.05, BARRIER_STOP_Z), null, 3, null, 3);
       this.particles.dust(this._v, 1, 0.8, 0.9);
     }
   }
 
   updateWaveKill() {
+    const b = this.barrier;
     const w = this.debris.wave;
-    if (!w || this.phase !== 'wave') return;
+    if (this.phase !== 'wave' || !b.plowing || !w) return;
     for (const p of this.players) {
-      if (!p.alive) continue;
+      if (!p.alive || Math.abs(p.pos.x) > CENTER_HALF + 0.3) continue;
+      const g = groundHeight(p.pos.x, p.pos.z);
+      const feet = p.pos.y - g;
+      const rel = p.pos.z - b.z;
+      if (rel > -BARRIER_BACK - 0.3 && rel < BARRIER_FRONT + 0.25 && feet < b.topY - g - 0.08) { this.killPlayer(p, 'wave'); continue; }
       const dz = w.z - p.pos.z;
-      if (dz < 0 || dz > w.length) continue;
-      const hp = this.debris.waveProfile(dz);
-      const feet = p.pos.y - groundHeight(p.pos.x, p.pos.z);
-      if (feet < hp * 0.78 - 0.05) this.killPlayer(p, 'wave');
-    }
-    for (let i = 0; i < 3; i++) {
-      const x = (Math.random() - 0.5) * 2 * (FIELD.x1 - 1);
-      this.particles.dust(this._v.set(x, groundHeight(x, w.z) + 0.1, w.z), 1, 0.5, 0.7);
+      if (dz >= 0 && dz <= w.length && feet < this.debris.waveProfile(dz) * 0.72 - 0.04) this.killPlayer(p, 'wave');
     }
   }
 
@@ -424,15 +435,15 @@ export class Game {
 
   rayBarrier(o, d, maxT) {
     const b = this.barrier;
-    if (!b.active || b.y < -2.5) return -1;
+    if (!b.active || b.yC < -3.2) return -1;
     const zf = b.z + 0.3;
     if (Math.abs(d.z) < 1e-5) return -1;
     const t = (zf - o.z) / d.z;
     if (t < 0 || t > maxT) return -1;
     const y = o.y + d.y * t;
-    const gy = groundHeight(0, b.z) + b.y;
+    const gy = b.groundY;
     const x = o.x + d.x * t;
-    if (y < gy || y > gy + 3.45 || Math.abs(x) > BARRIER_HALF_W) return -1;
+    if (y < gy || y > b.topY + 0.05 || Math.abs(x) > (b.yW > -3.2 ? BARRIER_HALF_W : CENTER_HALF)) return -1;
     return t;
   }
 
@@ -571,10 +582,12 @@ export class Game {
       }
     }
     const w = this.debris.wave;
-    if (w && this.phase === 'wave' && p.onGround) {
+    if (w && this.phase === 'wave' && p.onGround && this.barrier.state === 'plowing') {
       const dz = w.z - p.pos.z;
-      const lead = (JUMP_V / GRAVITY) * 0.55 * w.speed;
-      if (dz > -lead - 0.3 && dz < -lead + 0.6) { p.vel.y = JUMP_V; p.onGround = false; }
+      const v = this.barrier.plowSpeed;
+      const pass = (w.length + BARRIER_FRONT + BARRIER_BACK + 0.3) / v;
+      const t0 = Math.max(0.1, JUMP_V / GRAVITY - pass / 2);
+      if (-dz / v <= t0 + 0.02 && -dz / v > t0 - 0.06) { p.vel.y = JUMP_V; p.onGround = false; }
     }
     mouse.dx = 0;
     mouse.dy = 0;

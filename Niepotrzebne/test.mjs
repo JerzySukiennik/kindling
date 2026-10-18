@@ -106,6 +106,22 @@ if (mode === 'menu') {
     }, v);
     await page.screenshot({ path: `${outDir}/view_${v.name}.jpg`, quality: 85 });
   }
+} else if (mode === 'plow') {
+  await page.evaluate(async () => { const k = window.kindling; k.game.bot = true; await k.startGame(); });
+  const st = await page.evaluate(() => { const k = window.kindling; for (let i = 0; i < 400 && k.game.phase !== 'wave'; i++) k.sim(0.5); return k.game.phase + ' t=' + k.game.time.toFixed(1) + ' pile=' + k.debris.fieldCount(); });
+  console.log('reached', st);
+  for (let i = 0; i < 7; i++) {
+    const inf = await page.evaluate((i) => { const k = window.kindling; k.sim(i === 0 ? 0.55 : 0.33); const side = i % 2 === 1;
+      if (side) { k.frozen = true; k.camera.position.set(-17, 3.2, k.barrier.z + 3); k.camera.fov = 55; k.camera.updateProjectionMatrix(); k.camera.lookAt(0, 0.6, k.barrier.z + 1.5); k.R.render(1); }
+      else { k.frozen = false; k.tick(1 / 60); }
+      const w = k.debris.wave; return { state: k.barrier.state, bz: +k.barrier.z.toFixed(2), top: +k.barrier.topY.toFixed(2), front: w ? +w.z.toFixed(2) : null, py: +(k.player.pos.y).toFixed(2), pz: +k.player.pos.z.toFixed(2), alive: k.player.alive, phase: k.game.phase, riders: k.debris.chunks.filter((c) => c.state === 'ride').length };
+    }, i);
+    console.log(JSON.stringify(inf));
+    await page.screenshot({ path: `${outDir}/plow_${i}.jpg`, quality: 80 });
+    await page.evaluate(() => { window.kindling.frozen = false; });
+  }
+  const fin = await page.evaluate(() => { const k = window.kindling; k.sim(5); return { phase: k.game.phase, alive: k.player.alive, burned: k.game.stats.sticks, round: k.game.round, chunks: k.debris.chunks.length }; });
+  console.log('after', JSON.stringify(fin));
 } else if (mode === 'eval') {
   const code = process.argv[6];
   console.log(await page.evaluate(code));

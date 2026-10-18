@@ -107,8 +107,8 @@ export class Debris {
     return n;
   }
 
-  startWave(frontZ, speed, height, length) {
-    this.wave = { z: frontZ, speed, height, length, t: 0 };
+  startWave(follow, speed, height, length, halfX) {
+    this.wave = { z: follow(), follow, speed, height, length, halfX, t: 0 };
     for (const c of this.chunks) {
       if (c.state !== 'phys') continue;
       c.state = 'pending';
@@ -130,7 +130,7 @@ export class Debris {
     const w = this.wave;
     if (w) {
       w.t += dt;
-      w.z += w.speed * dt;
+      w.z = w.follow ? w.follow() : w.z + w.speed * dt;
     }
     for (let i = this.chunks.length - 1; i >= 0; i--) {
       const c = this.chunks[i];
@@ -157,7 +157,7 @@ export class Debris {
         if (_p.z <= w.z + 0.4) {
           c.state = 'ride';
           c.ride = {
-            x: THREE.MathUtils.clamp(_p.x, FIELD.x0 + 0.8, FIELD.x1 - 0.8),
+            x: THREE.MathUtils.clamp(_p.x * (w.halfX / Math.max(w.halfX, Math.abs(_p.x) + 0.01)), -w.halfX, w.halfX),
             dz: 0.15 + Math.random() * (w.length * 0.9),
             yk: Math.pow(Math.random(), 0.6),
             from: c.matrix.clone(),

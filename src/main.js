@@ -84,7 +84,7 @@ async function boot() {
   const audio = new Audio();
   const input = new Input(R.renderer.domElement);
   input.sensitivity = settings.sens;
-  const game = new Game({ scene, camera, renderer: R, sticks, debris, monsters, barrier, bonfire, player, laserFX, particles, audio, hud, physics });
+  const game = new Game({ scene, camera, renderer: R, sticks, debris, monsters, barrier, bonfire, player, laserFX, particles, audio, hud, physics, props });
 
   const applyPreset = (name) => {
     const real = name === 'auto' ? (applyPreset.auto || 'medium') : name;
@@ -218,8 +218,8 @@ async function boot() {
     show('menu', true);
     debris.clearAll();
     game.phase = 'menu';
-    barrier.state = 'hidden';
-    barrier.y = -3.7;
+    barrier.reset();
+    props.restoreCandles();
     laserFX.update(0, 0, false, camera.position, camera.position, false);
     audio.updateLaser(false, false, 0);
     R.final.uniforms.uGhost.value = 0;
