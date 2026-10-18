@@ -26,7 +26,7 @@ export class Input {
     });
     window.addEventListener('mousedown', (e) => {
       if (!this.enabled) return;
-      if (!this.locked) { this.lock(); return; }
+      if (!this.locked) { if (e.target === this.target) this.lock(); return; }
       if (e.button === 0) this.fire = true;
       if (e.button === 2) this.aim = true;
     });
