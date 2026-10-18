@@ -29,6 +29,10 @@ export class Player {
     this.area = 'zone';
     this.canDouble = false;
     this.jumpsUsed = 0;
+    this.emote = null;
+    this.emoteCam = 0;
+    this.beat = 0;
+    this.onEmote = () => {};
     this.shake = 0;
     this.fovKick = 0;
     this.aimAmt = 0;
@@ -101,6 +105,21 @@ export class Player {
     }
     const moving = wish.lengthSq() > 0;
     if (moving) wish.normalize();
+    if (allowControl && !this.ghost) {
+      const ids = ['wave', 'dance', 'point', 'laugh'];
+      for (let i = 0; i < 4; i++) {
+        if (input.hit('Digit' + (i + 1)) && this.onGround) {
+          this.emote = this.emote && this.emote.id === ids[i] ? null : { id: ids[i], t: 0 };
+          if (this.emote) this.onEmote(this.emote.id);
+        }
+      }
+    }
+    if (this.emote) {
+      this.emote.t += dt;
+      const dur = { wave: 3, dance: 1e9, point: 2.4, laugh: 2.6 }[this.emote.id];
+      if (moving || !this.onGround || this.ghost || input.fire || input.aim || input.hit('Space') || this.emote.t > dur) this.emote = null;
+    }
+    this.emoteCam += ((this.emote && this.emote.t > 0.15 ? 1 : 0) - this.emoteCam) * Math.min(1, dt * 3);
     const sprint = allowControl && input.down('ShiftLeft') && moving && input.down('KeyW') && this.aimAmt < 0.3;
     const maxSpeed = this.ghost ? 5 : sprint ? 6.6 : 4.3 - this.aimAmt * 1.6;
     const accel = this.onGround ? 14 : 4;
@@ -202,13 +221,23 @@ export class Player {
     const right = this._right;
     const back = 3.5 - this.fovKick * 0.3 - this.aimAmt * 1.7;
     this.camPos.copy(pivot).addScaledVector(this.camDir, -back).addScaledVector(right, 0.95 - this.aimAmt * 0.25).add(new THREE.Vector3(0, 0.18 - this.aimAmt * 0.08, 0));
-    const gy = groundHeight(this.camPos.x, this.camPos.z) + 0.35;
+    if (this.emoteCam > 0.001) {
+      const ang = this.yaw - 0.55;
+      const front = this._v2 || (this._v2 = new THREE.Vector3());
+      front.set(this.pos.x - Math.sin(ang) * 3.0, this.pos.y + 1.55, this.pos.z - Math.cos(ang) * 3.0);
+      this.camPos.lerp(front, this.emoteCam);
+      const lookAt = new THREE.Vector3(this.pos.x, this.pos.y + 1.2, this.pos.z);
+      const dirToChar = lookAt.sub(this.camPos).normalize();
+      this.camDirEm = (this.camDirEm || new THREE.Vector3()).copy(this.camDir).lerp(dirToChar, this.emoteCam).normalize();
+    }
+    const gy = this.groundAt(this.camPos.x, this.camPos.z, 99) + 0.35;
     if (this.camPos.y < gy) this.camPos.y = gy;
     this.shake = Math.max(0, this.shake - dt * 1.8);
     const sh = this.shake * this.shake;
     const t = performance.now() * 0.001;
     cam.position.copy(this.camPos).add(new THREE.Vector3(Math.sin(t * 37) * sh * 0.06, Math.sin(t * 43 + 1) * sh * 0.05, 0));
-    cam.lookAt(this.camPos.x + this.camDir.x, this.camPos.y + this.camDir.y, this.camPos.z + this.camDir.z);
+    const ld = this.emoteCam > 0.001 ? this.camDirEm : this.camDir;
+    cam.lookAt(this.camPos.x + ld.x, this.camPos.y + ld.y, this.camPos.z + ld.z);
     const fov = 58 + this.fovKick * 6 - this.aimAmt * 27;
     if (Math.abs(cam.fov - fov) > 0.01) { cam.fov = fov; cam.updateProjectionMatrix(); }
   }

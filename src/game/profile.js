@@ -19,12 +19,15 @@ export const CATALOG = {
     { id: 'hex', name: 'Hex', color: [0.72, 0.38, 1.0], price: 120 },
     { id: 'gold', name: 'Gold', color: [1.0, 0.82, 0.32], price: 200 },
   ],
-  costumes: [
+  bodies: [
     { id: 'keeper', name: 'Grave Keeper', desc: 'Hood, gas mask, long coat.', price: 0 },
+  ],
+  costumes: [
+    { id: 'none', name: 'Nothing', desc: 'Just your own head.', price: 0 },
     { id: 'witch', name: 'Witch Hat', desc: 'A tall crooked hat.', price: 120 },
     { id: 'pumpkin', name: 'Pumpkin Head', desc: 'A carved pumpkin with a candle inside.', price: 160 },
     { id: 'plague', name: 'Plague Doctor', desc: 'Beak mask and wide brim hat.', price: 220 },
-    { id: 'bone', name: 'Bone Coat', desc: 'Pale coat and a skull mask.', price: 260 },
+    { id: 'bone', name: 'Skull', desc: 'A skull mask. Pale coat on the Grave Keeper.', price: 260 },
   ],
   abilities: [
     { id: 'double', name: 'Double Jump', desc: 'Jump again in mid-air. Space twice.', price: 220 },
@@ -37,8 +40,8 @@ const DEFAULT = () => ({
   v: 1,
   candy: 0,
   upgrades: { power: 0, cooling: 0, focus: 0 },
-  owned: { weapons: ['torch'], beams: ['toxic'], costumes: ['keeper'], abilities: [] },
-  equipped: { weapon: 'torch', beam: 'toxic', costume: 'keeper' },
+  owned: { weapons: ['torch'], beams: ['toxic'], costumes: ['none'], bodies: ['keeper'], abilities: [] },
+  equipped: { weapon: 'torch', beam: 'toxic', costume: 'none', body: 'keeper' },
   stats: { bestRound: 0, mostSticks: 0, totalSticks: 0, totalKills: 0, games: 0, parkourBest: 0 },
   history: [],
 });
@@ -59,6 +62,10 @@ export class Profile {
     } catch (e) { /* storage unavailable */ }
     for (const k of Object.keys(DEFAULT().owned)) if (!this.data.owned[k]) this.data.owned[k] = DEFAULT().owned[k];
     for (const k of Object.keys(DEFAULT().upgrades)) if (this.data.upgrades[k] === undefined) this.data.upgrades[k] = 0;
+    const eq = this.data.equipped;
+    if (!eq.body) eq.body = eq.costume === 'jurek' ? 'jurek' : 'keeper';
+    if (eq.costume === 'keeper' || eq.costume === 'jurek') eq.costume = 'none';
+    if (!this.data.owned.costumes.includes('none')) this.data.owned.costumes.push('none');
   }
 
   save() {
@@ -101,8 +108,9 @@ export class Profile {
   }
 
   equip(cat, id) {
+    if (cat === 'bodies') { this.data.equipped.body = id; this.save(); return true; }
     if (!this.has(cat, id)) return false;
-    const slot = { weapons: 'weapon', beams: 'beam', costumes: 'costume' }[cat];
+    const slot = { weapons: 'weapon', beams: 'beam', costumes: 'costume', bodies: 'body' }[cat];
     if (!slot) return false;
     this.data.equipped[slot] = id;
     this.save();

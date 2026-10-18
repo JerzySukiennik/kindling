@@ -558,6 +558,12 @@ export class Audio {
     }
   }
 
+  beatNow(fallbackT) {
+    if (this.scene === 'match' && this.music && !this.music.paused) return (this.music.currentTime - 41.75) / 0.5068;
+    if (this.scene === 'lobby' && this.lobbyEl && !this.lobbyEl.paused) return this.lobbyEl.currentTime / 0.5172;
+    return fallbackT / 0.5068;
+  }
+
   get musicTime() { return this.music && !this.music.paused ? this.music.currentTime : null; }
 
   restartMusic() {

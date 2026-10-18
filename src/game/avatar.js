@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Pose } from './rigpose.js';
-import { makeGun, gunMaterials } from './character.js';
+import { makeGun, gunMaterials, emoteTargets, buildCostume } from './character.js';
 
 const _v = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
@@ -18,6 +18,7 @@ export class AvatarCharacter {
   constructor(scene, gltf, beam) {
     this.root = new THREE.Group();
     this.model = gltf.scene;
+    this.clips = gltf.animations;
     this.root.add(this.model);
     scene.add(this.root);
     this.root.visible = false;
@@ -40,7 +41,7 @@ export class AvatarCharacter {
     });
     this.mixer = new THREE.AnimationMixer(this.model);
     this.actions = {};
-    for (const name of ['idle', 'walk', 'run']) {
+    for (const name of ['idle', 'walk', 'run', 'wave']) {
       const clip = gltf.animations.find((a) => a.name === name);
       if (!clip) continue;
       const a = this.mixer.clipAction(clip);
@@ -86,11 +87,47 @@ export class AvatarCharacter {
     this.ghost = false;
     this.fireKick = 0;
     this.land = 0;
-    this.blend = { idle: 1, walk: 0, run: 0 };
+    this.blend = { idle: 1, walk: 0, run: 0, wave: 0 };
   }
 
   setBeamColor(c) { this.mats.glow.color.setRGB(c[0], c[1], c[2]).multiplyScalar(2.6); }
-  setCostume() {}
+  setCostume(id) {
+    if (!this.accRoot) {
+      this.accRoot = new THREE.Group();
+      this.root.add(this.accRoot);
+      this.accParts = {};
+      this.headMeshes = this.meshes.filter((m) => /^(Head|Hair|Eye|Eyebrow)/.test(m.name));
+      this.accMats = { ...this.mats, lens: new THREE.MeshStandardMaterial({ color: 0x0a0c0b, roughness: 0.3, metalness: 0.85, emissive: new THREE.Color(0.18, 0.4, 0.1), emissiveIntensity: 0.7 }) };
+    }
+    for (const g of Object.values(this.accParts)) g.visible = false;
+    const replace = id === 'pumpkin' || id === 'plague' || id === 'bone';
+    for (const m of this.headMeshes) m.visible = !replace;
+    this.acc = id;
+    if (!id || id === 'none' || id === 'keeper') return;
+    if (!this.accParts[id]) {
+      const g = buildCostume(id, this.accMats);
+      g.scale.setScalar(id === 'witch' || id === 'plague' ? 1.18 : 1.12);
+      g.position.set(0, id === 'witch' ? 0.11 : 0.085, 0.012);
+      this.accRoot.add(g);
+      g.traverse((o) => { if (o.isMesh) { o.layers.enable(1); this.meshes.push(o); } });
+      this.accParts[id] = g;
+    }
+    this.accParts[id].visible = true;
+  }
+
+  followHead() {
+    if (!this.accRoot || !this.acc || this.acc === 'none') return;
+    const hb = this.bones.get('Head');
+    if (!hb) return;
+    const rootQ = this.root.getWorldQuaternion(_q).clone();
+    const hq = hb.getWorldQuaternion(new THREE.Quaternion());
+    const rest = this.pose.restW.get('Head').q;
+    const delta = rootQ.clone().invert().multiply(hq).multiply(rest.clone().invert());
+    this.accRoot.quaternion.copy(delta);
+    const hp = hb.getWorldPosition(new THREE.Vector3());
+    this.root.worldToLocal(hp);
+    this.accRoot.position.copy(hp);
+  }
 
   setGhost(on) {
     if (on === this.ghost) return;
@@ -111,10 +148,10 @@ export class AvatarCharacter {
     this.root.rotation.y = s.yaw + Math.PI;
     const sp = s.speed;
     const air = !s.onGround;
-    const want = air ? { idle: 1, walk: 0, run: 0 } : sp < 0.3 ? { idle: 1, walk: 0, run: 0 } : sp < 5 ? { idle: 0, walk: 1, run: 0 } : { idle: 0, walk: 0.2, run: 0.8 };
+    const want = s.emote && s.emote.id === 'wave' && this.actions.wave ? { idle: 0, walk: 0, run: 0, wave: 1 } : air ? { idle: 1, walk: 0, run: 0 } : sp < 0.3 ? { idle: 1, walk: 0, run: 0 } : sp < 5 ? { idle: 0, walk: 1, run: 0 } : { idle: 0, walk: 0.2, run: 0.8 };
     const k = Math.min(1, dt * 8);
     for (const n of Object.keys(this.actions)) {
-      this.blend[n] += (want[n] - this.blend[n]) * k;
+      this.blend[n] += ((want[n] || 0) - this.blend[n]) * k;
       this.actions[n].setEffectiveWeight(this.blend[n]);
     }
     if (this.actions.walk) this.actions.walk.timeScale = THREE.MathUtils.clamp(sp / 1.6, 0.6, 2.2) * (s.localMove.y < -0.3 ? -1 : 1);
@@ -128,8 +165,27 @@ export class AvatarCharacter {
     this.fireKick = Math.max(0, this.fireKick - dt * 6);
     this.aimPivot.rotation.set(-s.pitch + this.fireKick * 0.04, 0.0, 0);
     this.gun.position.z = 0.34 - this.fireKick * 0.02;
+    this.gun.visible = !s.emote;
     this.root.updateMatrixWorld(true);
     const P = this.pose;
+    if (s.emote) {
+      const E = emoteTargets(s.emote, s.beat || 0);
+      if (hips) { hips.position.x = this.hipsRest.x + E.sway / Math.max(1e-3, this.model.scale.x); hips.position.y += E.bounce; }
+      this.root.updateMatrixWorld(true);
+      if (s.emote.id === 'wave' && this.actions.wave) { this.followHead(); return; }
+      P.spine(E.lean, E.twist, -E.sway * 2);
+      P.neckHead(s.emote.id === 'laugh' ? -0.35 : 0.05, 0, E.tilt);
+      const right = _v2.set(-1, 0, 0).applyQuaternion(this.root.getWorldQuaternion(_q));
+      for (const [side, key, ps] of [['Right', 'R', 1], ['Left', 'L', -1]]) {
+        const tg = E[key];
+        const target = _v.set(-tg[0], tg[1], tg[2]).applyMatrix4(this.root.matrixWorld);
+        const pole = new THREE.Vector3(0, -1, 0).addScaledVector(right, ps * 0.8).normalize();
+        P.arm(side, target, pole);
+        P.curl(side, { all: s.emote.id === 'point' && side === 'Right' ? 0.15 : 0.5 });
+      }
+      this.followHead();
+      return;
+    }
     const right = _v2.set(-1, 0, 0).applyQuaternion(this.root.getWorldQuaternion(_q));
     P.spine(-s.pitch * 0.45, 0.18, 0);
     P.neckHead(-s.pitch * 0.4, 0.12, 0);
@@ -152,5 +208,6 @@ export class AvatarCharacter {
       P.arm(side, target, pole, side === 'Right' ? new THREE.Vector3(0, -1, 0).applyQuaternion(gq) : _f, _n);
       P.curl(side, { all: 0.9, Thumb: 0.4 });
     }
+    this.followHead();
   }
 }

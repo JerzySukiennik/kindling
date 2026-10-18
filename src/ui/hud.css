@@ -38,7 +38,28 @@ html, body {
   background: radial-gradient(ellipse at 50% 60%, rgba(0,0,0,0.15), rgba(0,0,0,0.72));
   animation: fade-in 0.6s ease both;
 }
-#loading { background: var(--bg); z-index: 30; }
+#loading { background: radial-gradient(ellipse at 50% 120%, #1a0f08 0%, #07080b 55%, #040406 100%); z-index: 30; overflow: hidden; }
+#load-embers { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.load-moon { position: absolute; top: 9%; right: 16%; width: 120px; height: 120px; border-radius: 50%; background: radial-gradient(circle at 30% 35%, rgba(150,145,130,0.55) 0 9%, transparent 10%), radial-gradient(circle at 62% 58%, rgba(150,145,130,0.45) 0 13%, transparent 14%), radial-gradient(circle at 55% 28%, rgba(160,155,140,0.35) 0 6%, transparent 7%), radial-gradient(circle at 42% 40%, #ece6d6 0%, #cfc7b2 50%, #a9a08a 72%); box-shadow: 0 0 90px 40px rgba(170, 190, 230, 0.1), inset -14px -10px 30px rgba(0,0,0,0.35); opacity: 0.62; }
+.load-fog { position: absolute; left: -10%; right: -10%; bottom: 0; height: 40%; background: linear-gradient(180deg, rgba(20,24,32,0) 0%, rgba(30,34,44,0.55) 60%, rgba(20,22,28,0.9) 100%); animation: fog 14s ease-in-out infinite alternate; }
+@keyframes fog { from { transform: translateX(-3%); } to { transform: translateX(3%); } }
+.load-title { position: relative; animation: flicker 4.5s infinite; }
+@keyframes flicker { 0%, 100% { text-shadow: 0 0 40px rgba(255,138,31,0.35), 0 2px 0 rgba(0,0,0,0.6); } 47% { text-shadow: 0 0 60px rgba(255,138,31,0.5), 0 2px 0 rgba(0,0,0,0.6); } 50% { text-shadow: 0 0 18px rgba(255,138,31,0.15), 0 2px 0 rgba(0,0,0,0.6); } 53% { text-shadow: 0 0 52px rgba(255,138,31,0.45), 0 2px 0 rgba(0,0,0,0.6); } }
+.fuse { position: relative; width: min(420px, 74vw); height: 4px; margin-top: 8px; border-radius: 2px; background: repeating-linear-gradient(90deg, #6b5236 0 6px, #4d3a26 6px 9px); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.4); }
+.fuse i { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: linear-gradient(90deg, #1a1512, #2a201a 85%, #ff7a1a); border-radius: 2px; transition: width 0.35s ease; }
+.fuse b { position: absolute; top: 50%; left: 0%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: radial-gradient(circle, #fff6d0 0%, #ffb347 35%, rgba(255,110,20,0.6) 60%, rgba(255,80,0,0) 72%); box-shadow: 0 0 22px 8px rgba(255,120,30,0.55); animation: spark 0.12s infinite alternate; transition: left 0.35s ease; }
+@keyframes spark { from { transform: scale(0.85); } to { transform: scale(1.15); } }
+.load-tip { position: absolute; bottom: 11%; left: 50%; transform: translateX(-50%); width: min(560px, 86vw); text-align: center; font-size: 18px; letter-spacing: 0.06em; color: var(--ink-dim); opacity: 0; transition: opacity 0.35s ease; }
+.load-tip.on { opacity: 1; }
+.load-walker { position: absolute; bottom: 3%; left: -10%; width: 84px; height: 112px; opacity: 0.95; animation: walkacross 26s linear infinite; filter: drop-shadow(0 0 6px rgba(0,0,0,0.8)); }
+@keyframes walkacross { from { left: -8%; } to { left: 104%; } }
+.lw-leg, .lw-arm { transform-box: fill-box; }
+.lw-leg { transform-origin: 50% 0%; animation: legswing 0.9s ease-in-out infinite alternate; }
+.lw-leg.l2 { animation-delay: -0.9s; }
+.lw-arm { transform-origin: 0% 0%; animation: armswing 1.8s ease-in-out infinite alternate; }
+.lw-arm.a2 { transform-origin: 100% 0%; animation-delay: -0.9s; }
+@keyframes legswing { from { transform: rotate(-16deg); } to { transform: rotate(14deg); } }
+@keyframes armswing { from { transform: rotate(-10deg); } to { transform: rotate(12deg); } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
 .title {

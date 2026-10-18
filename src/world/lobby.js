@@ -4,6 +4,7 @@ import { LOBBY, groundHeight } from './layout.js';
 import { triplanarMaterial } from './stone.js';
 import { mulberry32 } from './noise.js';
 import { U } from './globals.js';
+import { createWardrobe } from './wardrobe.js';
 
 const Y = () => LOBBY.y;
 
@@ -168,30 +169,9 @@ export function createLobby(scene, assets, cem, bonfire) {
     for (const [bx, by, bz] of out.candyBowls) add(bowlGeo.clone().translate(bx, by + 0.07, bz), darkWood, false);
   }
 
-  {
-    const cx = 10.6;
-    const cz = 45;
-    const parts = [box(0.8, 2.5, 1.7, cx, y0 + 1.25, cz), box(0.9, 0.16, 1.85, cx, y0 + 2.55, cz), box(0.9, 0.12, 1.8, cx, y0 + 0.06, cz)];
-    add(strip(parts), darkWood);
-    for (const s of [-1, 1]) {
-      const doorL = new THREE.Mesh(box(0.05, 2.25, 0.82, 0, 0, s * 0.41), planks);
-      doorL.position.set(cx - 0.42, y0 + 1.3, cz + s * 0.85);
-      doorL.rotation.y = s * 0.55;
-      doorL.castShadow = true;
-      scene.add(doorL);
-    }
-    add(box(0.1, 2.0, 0.9, cx - 0.1, y0 + 1.3, cz), new THREE.MeshStandardMaterial({ color: 0x0c0a09, roughness: 0.9 }));
-    const mx = 10.3;
-    const mz = 48.2;
-    add(strip([box(0.08, 2.2, 0.08, mx, y0 + 1.1, mz - 0.55), box(0.08, 2.2, 0.08, mx, y0 + 1.1, mz + 0.55), box(0.1, 0.1, 1.2, mx, y0 + 2.2, mz), box(0.1, 0.1, 1.2, mx, y0 + 0.2, mz)]), darkWood);
-    const mirror = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 1.9), new THREE.MeshStandardMaterial({ color: 0x9aa3a8, metalness: 1, roughness: 0.04, envMapIntensity: 1.6 }));
-    mirror.position.set(mx - 0.05, y0 + 1.2, mz);
-    mirror.rotation.y = -Math.PI / 2;
-    scene.add(mirror);
-    solid(cx - 0.45, cx + 0.45, cz - 0.95, cz + 0.95, 2.7);
-    out.obstacles.push({ x: mx, z: mz, r: 0.5 });
-    out.interactables.push({ id: 'wardrobe', x: cx - 1.9, z: cz, r: 2.2, label: 'Wardrobe' });
-  }
+  out.wardrobe = createWardrobe(scene, darkWood, planks);
+  out.solids.push(out.wardrobe.solid);
+  out.interactables.push(out.wardrobe.interact);
 
   {
     const bx = 5.2;
@@ -374,7 +354,8 @@ export function createLobby(scene, assets, cem, bonfire) {
     out.boardCanvas.tex.needsUpdate = true;
   };
 
-  out.update = (dt, t) => {
+  out.update = (dt, t, wardrobeOpen = false) => {
+    out.wardrobe.update(dt, wardrobeOpen);
     if (out.goldPumpkin) out.goldPumpkin.rotation.y = t * 0.8;
     if (out.bell) {
       out.bellSwing = Math.max(0, (out.bellSwing || 0) - dt * 0.35);

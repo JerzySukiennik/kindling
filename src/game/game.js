@@ -199,7 +199,7 @@ export class Game {
     this.lobby.drawBoard(this.profile);
     this.applyLoadout();
     this.audio.toLobby();
-    this.hud.message('Graveyard Hill', 'Shop, practice, or ring the chapel bell', 3.2);
+    this.hud.message('Graveyard Hill', 'Shop, practice, ring the bell · 1-4 emotes · R +60 s', 3.6);
   }
 
   spawnDummy(spot) {
@@ -297,6 +297,7 @@ export class Game {
       if (this.bot && this.phase !== 'lobby') this.botControl(dt, mouse);
       this.player.update(dt, input, mouse, canControl);
     }
+    this.player.beat = this.audio.beatNow(this.time);
     this.updateAbilities(dt, input, control);
     const wdt = this.slowT > 0 ? dt * 0.35 : dt;
     this.phaseUpdate(dt, now, input);
@@ -308,7 +309,7 @@ export class Game {
     this.updateWaveKill();
     this.updateCandyFx(dt);
     this.updatePushers();
-    if (this.lobby) this.lobby.update(dt, now);
+    if (this.lobby) this.lobby.update(dt, now, this.wardrobeOpen);
     this.hud.setCandy(this.profile.candy);
     this.hud.setHeat(this.gunHeat, this.overheat);
   }
@@ -492,8 +493,13 @@ export class Game {
   updateLobby(dt, input) {
     const p = this.player;
     if (!this.uiOpen) this.lobbyTimer -= dt;
+    if (!this.uiOpen && input.hit('KeyR') && !this.bellRung) {
+      this.lobbyTimer = Math.min(this.lobbyTimer + 60, 600);
+      this.hud.message('+60 s', 'The night can wait', 1.6);
+      this.audio.chime();
+    }
     const t = Math.max(0, Math.ceil(this.lobbyTimer));
-    this.hud.timer(this.bellRung ? 'The bell tolls' : `Night falls in ${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`);
+    this.hud.timer(this.bellRung ? 'The bell tolls' : `Night falls in ${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}  ·  R +60 s`);
     if (this.lobbyTimer <= 0) { this.bellRung = false; this.startNight(); return; }
     let near = null;
     let best = 1e9;

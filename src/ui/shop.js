@@ -1,8 +1,8 @@
 import { CATALOG } from '../game/profile.js';
 
 const TABS = {
-  shop: [['upgrades', 'Upgrades'], ['weapons', 'Lasers'], ['abilities', 'Abilities'], ['beams', 'Beams'], ['costumes', 'Costumes']],
-  wardrobe: [['costumes', 'Costumes'], ['beams', 'Beams']],
+  shop: [['upgrades', 'Upgrades'], ['weapons', 'Lasers'], ['abilities', 'Abilities'], ['costumes', 'Hats & Masks'], ['beams', 'Beams']],
+  wardrobe: [['bodies', 'Character'], ['costumes', 'Hats & Masks'], ['beams', 'Beams']],
 };
 
 const candy = '<svg class="cc"><use href="#candy"/></svg>';
@@ -17,12 +17,17 @@ export class ShopUI {
     this.open = false;
     this.onClose = () => {};
     this.extraCostumes = [];
+    this.onHover = () => {};
+    this.el.addEventListener('mouseover', (e) => {
+      const card = e.target.closest('.card');
+      if (card) this.onHover(card.dataset.cat, card.dataset.id);
+    });
     this.el.addEventListener('click', (e) => {
       const t = e.target.closest('[data-act]');
       if (!t) return;
       const act = t.dataset.act;
       if (act === 'close') { this.close(); return; }
-      if (act === 'tab') { this.tab = t.dataset.tab; this.render(); return; }
+      if (act === 'tab') { this.tab = t.dataset.tab; this.render(); this.onHover(null, null); return; }
       const cat = t.dataset.cat;
       const id = t.dataset.id;
       if (act === 'buy') {
@@ -30,10 +35,7 @@ export class ShopUI {
         this.render();
       }
       if (act === 'equip') {
-        if (cat === 'costumes' && this.extraCostumes.find((c) => c.id === id)) {
-          this.profile.data.equipped.costume = id;
-          this.profile.save();
-        } else this.profile.equip(cat, id);
+        this.profile.equip(cat, id);
         this.onChange(cat, id, 'equip');
         this.render();
       }
@@ -68,7 +70,7 @@ export class ShopUI {
 
   items(cat) {
     const list = [...CATALOG[cat]];
-    if (cat === 'costumes') list.push(...this.extraCostumes);
+    if (cat === 'bodies') list.push(...this.extraCostumes);
     return list;
   }
 
@@ -86,8 +88,8 @@ export class ShopUI {
         const price = P.priceOf('upgrades', it.id);
         btn = price === null ? '<span class="maxed">Max</span>' : `<button class="buy ${price > P.candy ? 'poor' : ''}" data-act="buy" data-cat="upgrades" data-id="${it.id}">${candy}${price}</button>`;
       } else {
-        const owned = it.free || P.has(cat, it.id);
-        const slot = { weapons: 'weapon', beams: 'beam', costumes: 'costume' }[cat];
+        const owned = it.free || cat === 'bodies' || P.has(cat, it.id);
+        const slot = { weapons: 'weapon', beams: 'beam', costumes: 'costume', bodies: 'body' }[cat];
         const on = slot && P.equipped(slot) === it.id;
         if (cat === 'abilities') btn = owned ? '<span class="maxed">Owned</span>' : `<button class="buy ${it.price > P.candy ? 'poor' : ''}" data-act="buy" data-cat="${cat}" data-id="${it.id}">${candy}${it.price}</button>`;
         else if (on) btn = '<span class="maxed">Equipped</span>';
@@ -96,7 +98,7 @@ export class ShopUI {
         if (it.free) status = '<div class="tag free">Free</div>';
       }
       const swatch = it.color ? `<span class="swatch" style="background: rgb(${it.color.map((c) => Math.round(Math.min(1, c) * 255)).join(',')})"></span>` : '';
-      return `<div class="card">${swatch}<div class="card-body"><div class="card-name">${it.name}</div><div class="card-desc">${it.desc || ''}</div>${status}</div><div class="card-act">${btn}</div></div>`;
+      return `<div class="card" data-cat="${cat}" data-id="${it.id}">${swatch}<div class="card-body"><div class="card-name">${it.name}</div><div class="card-desc">${it.desc || ''}</div>${status}</div><div class="card-act">${btn}</div></div>`;
     }).join('');
     const title = this.mode === 'wardrobe' ? 'Wardrobe' : 'Candy & Curses';
     this.el.innerHTML = `

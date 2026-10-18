@@ -37,6 +37,7 @@ const saveSettings = () => { try { localStorage.setItem(SETTINGS_KEY, JSON.strin
 
 function setLoad(p, text) {
   $('load-bar').style.width = Math.round(p * 100) + '%';
+  $('load-spark').style.left = Math.round(p * 100) + '%';
   if (text) $('load-text').textContent = text;
 }
 
@@ -106,13 +107,12 @@ async function boot() {
     baseChar.setBeamColor(c);
     if (avatarChar) avatarChar.setBeamColor(c);
     const cos = profile.equipped('costume');
-    if (cos === 'jurek' && avatarChar) player.setCharacter(avatarChar);
-    else {
-      player.setCharacter(baseChar);
-      baseChar.setCostume(cos === 'jurek' ? 'keeper' : cos);
-    }
+    const body = profile.data.equipped.body;
+    if (body === 'jurek' && avatarChar) { player.setCharacter(avatarChar); avatarChar.setCostume(cos); }
+    else { player.setCharacter(baseChar); baseChar.setCostume(cos); }
   };
   const shopUI = new ShopUI(profile, () => { applyLook(); game.applyLoadout(); });
+  shopUI.onHover = (cat, id) => { if (shopUI.mode === 'wardrobe') lobby.wardrobe.focus(cat, id); };
   applyLook();
 
   const applyPreset = (name) => {
@@ -134,6 +134,7 @@ async function boot() {
     if (!r.ok) return;
     avatarChar = await AvatarCharacter.load(scene, 'private/jurek_avatar.glb', profile.beamColor());
     shopUI.extraCostumes = [{ id: 'jurek', name: 'Jurek', desc: 'You. RTFKT hoodie, H&M sweatpants, green Crocs.', price: 0, free: true }];
+    lobby.wardrobe.setAvatar(avatarChar.model, avatarChar.clips);
     avatarChar.root.visible = true;
     try { await R.renderer.compileAsync(avatarChar.root, camera, scene); } catch (e) { /* compiled on first draw */ }
     avatarChar.root.visible = false;
@@ -215,13 +216,15 @@ async function boot() {
   game.events.fade = (on) => $('fade').classList.toggle('on', on);
   game.events.openShop = (id) => {
     game.uiOpen = true;
+    input.enabled = false;
     input.unlock();
+    if (id === 'wardrobe') { lobby.wardrobe.focus(null, null); lobby.wardrobe.camPos.copy(camera.position); lobby.wardrobe.camLook.copy(player.pos).add(new THREE.Vector3(0, 1.4, 0)); }
     shopUI.show(id === 'wardrobe' ? 'wardrobe' : 'shop');
   };
   shopUI.onClose = () => {
     game.uiOpen = false;
     lobby.drawBoard(profile);
-    if (mode === 'play') input.lock();
+    if (mode === 'play') { input.enabled = true; input.lock(); }
   };
 
   input.onLockChange = (locked) => {
@@ -358,6 +361,7 @@ async function boot() {
   const firePos = new THREE.Vector3(0, 0, (PIT.z0 + PIT.z1) / 2);
   const tick = (dt) => {
     if (window.kindling && window.kindling.frozen) return;
+    game.wardrobeOpen = shopUI.open && shopUI.mode === 'wardrobe';
     if (paused) dt = 0;
     U.time.value += dt;
     const mouse = input.consume();
@@ -368,13 +372,13 @@ async function boot() {
     particles.update(dt, U.time.value);
     bonfire.update(dt, U.time.value);
     props.update(U.time.value);
-    if (shopUI.open && shopUI.mode === 'wardrobe') {
-      const f = player._fwd;
-      const want = new THREE.Vector3(player.pos.x + f.x * 2.7 + f.z * 0.9, player.pos.y + 1.35, player.pos.z + f.z * 2.7 - f.x * 0.9);
-      wardCam.lerp(want, Math.min(1, dt * 5 + 0.02));
-      camera.position.copy(wardCam);
-      camera.lookAt(player.pos.x + f.z * 1.25, player.pos.y + 1.0, player.pos.z - f.x * 1.25);
-    } else wardCam.copy(camera.position);
+    const wOpen = shopUI.open && shopUI.mode === 'wardrobe';
+    if (wOpen) {
+      camera.position.copy(lobby.wardrobe.camPos);
+      camera.lookAt(lobby.wardrobe.camLook);
+      if (camera.fov !== 50) { camera.fov = 50; camera.updateProjectionMatrix(); }
+    }
+    player.char.root.visible = !wOpen;
     sky.update(U.time.value, U.fire.value, game.lightningLevel || 0);
     R.final.uniforms.uFlash.value = (game.lightningLevel || 0) * 0.22;
     hud.update(dt);

@@ -26,10 +26,88 @@
 <div id="gl-lost" class="screen hidden"><div class="title small">Graphics reset</div><div class="sub">The GPU driver restarted. Restoring the game.</div></div>
 
 <div id="loading" class="screen">
-  <div class="title">Kindling</div>
-  <div class="bar"><i id="load-bar"></i></div>
+  <canvas id="load-embers"></canvas>
+  <div class="load-moon"></div>
+  <div class="load-fog"></div>
+  <div class="title load-title">Kindling</div>
+  <div class="fuse"><i id="load-bar"></i><b id="load-spark"></b></div>
   <div id="load-text" class="sub">Gathering sticks</div>
+  <div id="load-tip" class="load-tip"></div>
+  <svg class="load-walker" viewBox="0 0 120 160" aria-hidden="true">
+    <g stroke="#5c4632" stroke-width="5" stroke-linecap="round" fill="none" style="filter: drop-shadow(0 0 3px rgba(255,140,40,0.35))">
+      <line x1="60" y1="70" x2="58" y2="28"/>
+      <line x1="44" y1="34" x2="74" y2="32"/>
+      <line x1="50" y1="70" x2="70" y2="70"/>
+      <g class="lw-arm a1"><line x1="74" y1="32" x2="96" y2="50"/><line x1="96" y1="50" x2="108" y2="44"/></g>
+      <g class="lw-arm a2"><line x1="44" y1="34" x2="30" y2="56"/><line x1="30" y1="56" x2="20" y2="52"/></g>
+      <g class="lw-leg l1"><line x1="66" y1="70" x2="74" y2="112"/><line x1="74" y1="112" x2="70" y2="152"/></g>
+      <g class="lw-leg l2"><line x1="54" y1="70" x2="46" y2="112"/><line x1="46" y1="112" x2="52" y2="152"/></g>
+      <line x1="58" y1="28" x2="60" y2="16"/>
+      <path d="M48 8 L72 22 M70 4 L50 20 M58 2 L60 22"/>
+    </g>
+    <circle cx="55" cy="13" r="2.4" fill="#ffb347"/><circle cx="64" cy="12" r="2.4" fill="#ffb347"/>
+  </svg>
 </div>
+<script>
+(() => {
+  const tips = [
+    'Thick branches take longer to burn through. Hold the beam steady.',
+    'Cut one leg and they limp. Cut both and they crawl.',
+    'No arms, no grab. A stick without hands cannot take you.',
+    'The barrier only pushes. The fire is what kills.',
+    'Jump the barrier and the pile of sticks in front of it.',
+    'Hold the right mouse button to zoom on distant twigs.',
+    'Candy & Curses sells lasers that split, jump and saw.',
+    'Ring the chapel bell when you are ready for the night.',
+    'Press R on the hill to buy yourself another minute.',
+    'Every stick you cut ends up in the fire behind you.',
+  ];
+  const tipEl = document.getElementById('load-tip');
+  let ti = Math.floor(Math.random() * tips.length);
+  const showTip = () => { tipEl.classList.remove('on'); setTimeout(() => { tipEl.textContent = tips[ti++ % tips.length]; tipEl.classList.add('on'); }, 350); };
+  showTip();
+  const tipTimer = setInterval(showTip, 4200);
+  const cv = document.getElementById('load-embers');
+  const ctx = cv.getContext('2d');
+  const spark = document.getElementById('load-spark');
+  const P = [];
+  const fit = () => { cv.width = innerWidth * devicePixelRatio; cv.height = innerHeight * devicePixelRatio; };
+  fit();
+  addEventListener('resize', fit);
+  let last = performance.now();
+  const loop = (t) => {
+    const load = document.getElementById('loading');
+    if (load.classList.contains('hidden')) { clearInterval(tipTimer); return; }
+    const dt = Math.min(0.05, (t - last) / 1000);
+    last = t;
+    const r = spark.getBoundingClientRect();
+    const sx = (r.left + r.width / 2) * devicePixelRatio;
+    const sy = (r.top + r.height / 2) * devicePixelRatio;
+    for (let i = 0; i < 3; i++) P.push({ x: sx, y: sy, vx: (Math.random() - 0.5) * 40, vy: -30 - Math.random() * 70, l: 1, d: 0.5 + Math.random() * 1.4, s: 0.6 + Math.random() * 1.6 });
+    if (Math.random() < 0.4) P.push({ x: Math.random() * cv.width, y: cv.height + 10, vx: (Math.random() - 0.5) * 20, vy: -20 - Math.random() * 40, l: 1, d: 4 + Math.random() * 4, s: 0.5 + Math.random() * 1.2 });
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = P.length - 1; i >= 0; i--) {
+      const p = P[i];
+      p.l -= dt / p.d;
+      if (p.l <= 0) { P.splice(i, 1); continue; }
+      p.vx += (Math.random() - 0.5) * 30 * dt;
+      p.x += p.vx * dt * devicePixelRatio;
+      p.y += p.vy * dt * devicePixelRatio;
+      const a = p.l * (0.6 + 0.4 * Math.sin(t * 0.02 + i));
+      const rr = p.s * devicePixelRatio * 2.2;
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, rr * 3);
+      g.addColorStop(0, `rgba(255,190,90,${a})`);
+      g.addColorStop(0.35, `rgba(255,110,20,${a * 0.5})`);
+      g.addColorStop(1, 'rgba(255,60,0,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(p.x - rr * 3, p.y - rr * 3, rr * 6, rr * 6);
+    }
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+})();
+</script>
 
 <div id="menu" class="screen hidden">
   <div class="title">Kindling</div>
@@ -42,7 +120,7 @@
     <span class="candy-wallet"><svg class="cc"><use href="#candy"/></svg><b id="menu-candy">0</b></span>
     <span id="menu-best"></span>
   </div>
-  <div class="controls-hint">WASD move · Mouse aim · LMB laser · RMB zoom · Space jump · Shift sprint · E use · Esc pause</div>
+  <div class="controls-hint">WASD move · Mouse aim · LMB laser · RMB zoom · Space jump · E use · 1-4 emotes · Esc pause</div>
 </div>
 
 <div id="settings" class="screen panel hidden">

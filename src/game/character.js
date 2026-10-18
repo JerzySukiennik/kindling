@@ -101,6 +101,138 @@ export function gunMaterials(beam) {
   };
 }
 
+export function buildCostume(id, M) {
+  const g = new THREE.Group();
+  const add = (geo, mat, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    m.rotation.set(rx, ry, rz);
+    m.castShadow = true;
+    m.receiveShadow = true;
+    m.userData.baseMat = mat;
+    g.add(m);
+    return m;
+  };
+  const tex = (draw) => {
+    const c = document.createElement('canvas');
+    c.width = 512;
+    c.height = 256;
+    draw(c.getContext('2d'), 512, 256);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  };
+  if (id === 'witch') {
+    const felt = new THREE.MeshStandardMaterial({ color: 0x1c1420, roughness: 0.9 });
+    add(new THREE.CylinderGeometry(0.27, 0.27, 0.014, 40), felt, 0, 0.17, -0.01, -0.12);
+    const cone = new THREE.ConeGeometry(0.12, 0.46, 28, 8);
+    const p = cone.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const y = p.getY(i) + 0.23;
+      p.setZ(i, p.getZ(i) - Math.pow(Math.max(0, y - 0.18), 2) * 1.6);
+    }
+    cone.computeVertexNormals();
+    add(cone, felt, 0, 0.17 + 0.23, -0.03, -0.12);
+    add(new THREE.CylinderGeometry(0.122, 0.124, 0.035, 28, 1, true), new THREE.MeshStandardMaterial({ color: 0x5a3a12, roughness: 0.6 }), 0, 0.2, -0.015, -0.12);
+  } else if (id === 'pumpkin') {
+    const sg = new THREE.SphereGeometry(0.16, 32, 20);
+    const p = sg.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const v = new THREE.Vector3().fromBufferAttribute(p, i);
+      const k = 0.93 + 0.07 * Math.pow(Math.abs(Math.cos(Math.atan2(v.z, v.x) * 5)), 0.45);
+      p.setXYZ(i, v.x * k, v.y * 0.86, v.z * k);
+    }
+    sg.computeVertexNormals();
+    const face = tex((x, w, h) => {
+      x.fillStyle = '#000';
+      x.fillRect(0, 0, w, h);
+      x.fillStyle = '#fff';
+      const cx = w * 0.25;
+      for (const s of [-1, 1]) { x.beginPath(); x.moveTo(cx + s * 34, 92); x.lineTo(cx + s * 62, 122); x.lineTo(cx + s * 12, 122); x.fill(); }
+      x.beginPath(); x.moveTo(cx, 128); x.lineTo(cx + 10, 144); x.lineTo(cx - 10, 144); x.fill();
+      x.beginPath();
+      x.moveTo(cx - 70, 158);
+      for (let i = 0; i <= 8; i++) x.lineTo(cx - 70 + i * 17.5, i % 2 ? 170 : 160);
+      x.lineTo(cx + 70, 158); x.quadraticCurveTo(cx, 214, cx - 70, 158); x.fill();
+    });
+    const pm = new THREE.MeshStandardMaterial({ color: 0xa8460a, roughness: 0.55, emissive: new THREE.Color(3.2, 1.3, 0.25), emissiveMap: face });
+    add(sg, pm, 0, 0.04, 0.01);
+    add(new THREE.CylinderGeometry(0.018, 0.03, 0.08, 8), new THREE.MeshStandardMaterial({ color: 0x3a3320, roughness: 0.9 }), 0, 0.2, 0.0, 0.3);
+  } else if (id === 'plague') {
+    const lea = new THREE.MeshStandardMaterial({ color: 0x1d1813, roughness: 0.55 });
+    const blk = new THREE.MeshStandardMaterial({ color: 0x0f0f10, roughness: 0.85 });
+    add(new THREE.SphereGeometry(0.11, 24, 18), lea, 0, 0.02, 0.0).scale.set(1, 1.08, 1.05);
+    const beak = new THREE.ConeGeometry(0.05, 0.26, 18);
+    beak.rotateX(Math.PI / 2);
+    add(beak, lea, 0, -0.02, 0.21, 0.35);
+    for (const sx of [-1, 1]) {
+      add(new THREE.CircleGeometry(0.028, 20), M.lens, sx * 0.045, 0.035, 0.103, 0, sx * 0.25, 0);
+      add(new THREE.TorusGeometry(0.031, 0.006, 6, 20), M.brass, sx * 0.045, 0.035, 0.104, 0, sx * 0.25, 0);
+    }
+    add(new THREE.CylinderGeometry(0.3, 0.3, 0.014, 40), blk, 0, 0.14, -0.01, -0.08);
+    add(new THREE.CylinderGeometry(0.115, 0.125, 0.15, 28), blk, 0, 0.22, -0.02, -0.08);
+  } else if (id === 'bone') {
+    const skullTex = tex((x, w, h) => {
+      x.fillStyle = '#d8d0bc';
+      x.fillRect(0, 0, w, h);
+      x.fillStyle = '#120e0c';
+      const cx = w * 0.25;
+      for (const s of [-1, 1]) { x.beginPath(); x.ellipse(cx + s * 30, 118, 22, 18, 0, 0, Math.PI * 2); x.fill(); }
+      x.beginPath(); x.moveTo(cx, 138); x.lineTo(cx + 8, 156); x.lineTo(cx - 8, 156); x.fill();
+      for (let i = -3; i <= 3; i++) x.fillRect(cx + i * 9 - 1, 176, 2, 14);
+    });
+    const bone = new THREE.MeshStandardMaterial({ color: 0xffffff, map: skullTex, roughness: 0.7 });
+    add(new THREE.SphereGeometry(0.105, 28, 20), bone, 0, 0.03, 0.01).scale.set(0.95, 1.08, 1.05);
+    add(new THREE.BoxGeometry(0.11, 0.05, 0.08), new THREE.MeshStandardMaterial({ color: 0xd8d0bc, roughness: 0.7 }), 0, -0.07, 0.04);
+  }
+  if (id === 'keeper') {
+    const coat = new THREE.MeshStandardMaterial({ color: 0x2c2620, roughness: 0.74, side: THREE.DoubleSide });
+    const rub = new THREE.MeshStandardMaterial({ color: 0x272725, roughness: 0.72 });
+    const dk = new THREE.MeshStandardMaterial({ color: 0x17181a, roughness: 0.5, metalness: 0.6 });
+    add(new THREE.LatheGeometry([[0.0, -0.1], [0.12, -0.11], [0.14, 0.0], [0.135, 0.1], [0.1, 0.17], [0.0, 0.19]].map(([r, y]) => new THREE.Vector2(r, y)), 24, Math.PI * 0.72, Math.PI * 1.56), coat, 0, 0.02, -0.025).scale.set(1.06, 1, 1.14);
+    add(new THREE.SphereGeometry(0.1, 24, 18, -Math.PI * 0.5, Math.PI, 0, Math.PI), rub).scale.set(0.95, 1.05, 1.05);
+    for (const s of [-1, 1]) {
+      add(new THREE.CylinderGeometry(0.033, 0.036, 0.035, 20).rotateX(Math.PI / 2), dk, s * 0.042, 0.035, 0.093, 0, s * 0.18, 0);
+      add(new THREE.CircleGeometry(0.028, 20), M.lens, s * 0.045, 0.035, 0.111, 0, s * 0.18, 0);
+    }
+    add(new THREE.CylinderGeometry(0.046, 0.046, 0.05, 20).rotateX(Math.PI / 2 - 0.5), M.metal || dk, 0, -0.065, 0.135);
+  }
+  return g;
+}
+
+export function emoteTargets(e, beat) {
+  const t = e.t;
+  const id = e.id;
+  const o = { R: null, L: null, sway: 0, lean: 0, tilt: 0, twist: 0, bounce: 0 };
+  if (id === 'wave') {
+    o.R = [0.36 + 0.1 * Math.sin(t * 9), 1.78, 0.1];
+    o.L = [-0.23, 0.98, 0.04];
+    o.tilt = 0.12;
+  } else if (id === 'dance') {
+    const side = Math.floor(beat / 2) % 2 ? 1 : -1;
+    const b = beat - Math.floor(beat);
+    const hit = Math.exp(-b * 6);
+    o.R = [side * 0.3 + 0.08, 1.56 + hit * 0.06, 0.32];
+    o.L = [side * 0.3 - 0.14, 1.36 + hit * 0.06, 0.34];
+    o.sway = side * 0.07;
+    o.tilt = side * 0.22;
+    o.twist = side * 0.35;
+    o.bounce = hit * 0.05;
+    o.lean = 0.12;
+  } else if (id === 'point') {
+    o.R = [0.12, 1.45, 0.66];
+    o.L = [-0.21, 1.0, 0.08];
+    o.lean = 0.08;
+    o.twist = -0.2;
+  } else if (id === 'laugh') {
+    o.R = [0.07, 1.1, 0.2];
+    o.L = [-0.07, 1.06, 0.2];
+    o.lean = -0.28 + Math.sin(t * 15) * 0.05;
+    o.bounce = Math.abs(Math.sin(t * 15)) * 0.025;
+  }
+  return o;
+}
+
 export const SKINS = {
   default: { coat: 0x2c2620, coatDark: 0x1f1b17, cloth: 0x1b1b1c, leather: 0x2b1e15, mask: 0x272725, beam: new THREE.Color(0.55, 1.0, 0.3) },
 };
@@ -298,95 +430,14 @@ export class Character {
     const head = this.b.head;
     if (!this.defaultHead) this.defaultHead = head.children.filter((o) => o.isMesh);
     for (const g of Object.values(this.costumeParts)) g.visible = false;
+    if (id === 'none' || id === 'jurek') id = 'keeper';
     const replaceHead = id === 'pumpkin' || id === 'plague' || id === 'bone';
     for (const m of this.defaultHead) m.visible = !replaceHead;
     this.mats.coat.color.set(id === 'bone' ? 0x9c968a : 0x2c2620);
     this.mats.coatDark.color.set(id === 'bone' ? 0x6e695f : 0x1f1b17);
     if (id === 'keeper') return;
     if (!this.costumeParts[id]) {
-      const g = new THREE.Group();
-      const add = (geo, mat, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) => {
-        const m = new THREE.Mesh(geo, mat);
-        m.position.set(x, y, z);
-        m.rotation.set(rx, ry, rz);
-        m.castShadow = true;
-        m.receiveShadow = true;
-        m.userData.baseMat = mat;
-        g.add(m);
-        return m;
-      };
-      const tex = (draw) => {
-        const c = document.createElement('canvas');
-        c.width = 512;
-        c.height = 256;
-        draw(c.getContext('2d'), 512, 256);
-        const t = new THREE.CanvasTexture(c);
-        t.colorSpace = THREE.SRGBColorSpace;
-        return t;
-      };
-      if (id === 'witch') {
-        const felt = new THREE.MeshStandardMaterial({ color: 0x1c1420, roughness: 0.9 });
-        add(new THREE.CylinderGeometry(0.27, 0.27, 0.014, 40), felt, 0, 0.17, -0.01, -0.12);
-        const cone = new THREE.ConeGeometry(0.12, 0.46, 28, 8);
-        const p = cone.attributes.position;
-        for (let i = 0; i < p.count; i++) {
-          const y = p.getY(i) + 0.23;
-          p.setZ(i, p.getZ(i) - Math.pow(Math.max(0, y - 0.18), 2) * 1.6);
-        }
-        cone.computeVertexNormals();
-        add(cone, felt, 0, 0.17 + 0.23, -0.03, -0.12);
-        add(new THREE.CylinderGeometry(0.122, 0.124, 0.035, 28, 1, true), new THREE.MeshStandardMaterial({ color: 0x5a3a12, roughness: 0.6 }), 0, 0.2, -0.015, -0.12);
-      } else if (id === 'pumpkin') {
-        const sg = new THREE.SphereGeometry(0.16, 32, 20);
-        const p = sg.attributes.position;
-        for (let i = 0; i < p.count; i++) {
-          const v = new THREE.Vector3().fromBufferAttribute(p, i);
-          const k = 0.93 + 0.07 * Math.pow(Math.abs(Math.cos(Math.atan2(v.z, v.x) * 5)), 0.45);
-          p.setXYZ(i, v.x * k, v.y * 0.86, v.z * k);
-        }
-        sg.computeVertexNormals();
-        const face = tex((x, w, h) => {
-          x.fillStyle = '#000';
-          x.fillRect(0, 0, w, h);
-          x.fillStyle = '#fff';
-          const cx = w * 0.25;
-          for (const s of [-1, 1]) { x.beginPath(); x.moveTo(cx + s * 34, 92); x.lineTo(cx + s * 62, 122); x.lineTo(cx + s * 12, 122); x.fill(); }
-          x.beginPath(); x.moveTo(cx, 128); x.lineTo(cx + 10, 144); x.lineTo(cx - 10, 144); x.fill();
-          x.beginPath();
-          x.moveTo(cx - 70, 158);
-          for (let i = 0; i <= 8; i++) x.lineTo(cx - 70 + i * 17.5, i % 2 ? 170 : 160);
-          x.lineTo(cx + 70, 158); x.quadraticCurveTo(cx, 214, cx - 70, 158); x.fill();
-        });
-        const pm = new THREE.MeshStandardMaterial({ color: 0xa8460a, roughness: 0.55, emissive: new THREE.Color(3.2, 1.3, 0.25), emissiveMap: face });
-        add(sg, pm, 0, 0.04, 0.01);
-        add(new THREE.CylinderGeometry(0.018, 0.03, 0.08, 8), new THREE.MeshStandardMaterial({ color: 0x3a3320, roughness: 0.9 }), 0, 0.2, 0.0, 0.3);
-      } else if (id === 'plague') {
-        const lea = new THREE.MeshStandardMaterial({ color: 0x1d1813, roughness: 0.55 });
-        const blk = new THREE.MeshStandardMaterial({ color: 0x0f0f10, roughness: 0.85 });
-        add(new THREE.SphereGeometry(0.11, 24, 18), lea, 0, 0.02, 0.0).scale.set(1, 1.08, 1.05);
-        const beak = new THREE.ConeGeometry(0.05, 0.26, 18);
-        beak.rotateX(Math.PI / 2);
-        add(beak, lea, 0, -0.02, 0.21, 0.35);
-        for (const sx of [-1, 1]) {
-          add(new THREE.CircleGeometry(0.028, 20), this.mats.lens, sx * 0.045, 0.035, 0.103, 0, sx * 0.25, 0);
-          add(new THREE.TorusGeometry(0.031, 0.006, 6, 20), this.mats.brass, sx * 0.045, 0.035, 0.104, 0, sx * 0.25, 0);
-        }
-        add(new THREE.CylinderGeometry(0.3, 0.3, 0.014, 40), blk, 0, 0.14, -0.01, -0.08);
-        add(new THREE.CylinderGeometry(0.115, 0.125, 0.15, 28), blk, 0, 0.22, -0.02, -0.08);
-      } else if (id === 'bone') {
-        const skullTex = tex((x, w, h) => {
-          x.fillStyle = '#d8d0bc';
-          x.fillRect(0, 0, w, h);
-          x.fillStyle = '#120e0c';
-          const cx = w * 0.25;
-          for (const s of [-1, 1]) { x.beginPath(); x.ellipse(cx + s * 30, 118, 22, 18, 0, 0, Math.PI * 2); x.fill(); }
-          x.beginPath(); x.moveTo(cx, 138); x.lineTo(cx + 8, 156); x.lineTo(cx - 8, 156); x.fill();
-          for (let i = -3; i <= 3; i++) x.fillRect(cx + i * 9 - 1, 176, 2, 14);
-        });
-        const bone = new THREE.MeshStandardMaterial({ color: 0xffffff, map: skullTex, roughness: 0.7 });
-        add(new THREE.SphereGeometry(0.105, 28, 20), bone, 0, 0.03, 0.01).scale.set(0.95, 1.08, 1.05);
-        add(new THREE.BoxGeometry(0.11, 0.05, 0.08), new THREE.MeshStandardMaterial({ color: 0xd8d0bc, roughness: 0.7 }), 0, -0.07, 0.04);
-      }
+      const g = buildCostume(id, this.mats);
       head.add(g);
       g.traverse((o) => { if (o.isMesh) { this.meshes.push(o); o.layers.enable(1); } });
       this.costumeParts[id] = g;
@@ -455,9 +506,53 @@ export class Character {
     const shake = Math.sin(tnow * 50) * 0.004 * this.fireKick;
     this.gun.rotation.set(-aimPitch * 0.25 + this.fireKick * 0.05 + shake, 0.2, 0);
     this.gun.position.set(0.11, 0.05, 0.3 - this.fireKick * 0.02);
+    this.gun.visible = !s.emote;
+    if (s.emote) {
+      const E = emoteTargets(s.emote, s.beat || 0);
+      b.hips.position.x = E.sway;
+      b.hips.position.y += E.bounce;
+      b.spine.rotation.set(E.lean * 0.5, E.twist * 0.5, -E.sway * 1.5);
+      b.chest.rotation.set(E.lean * 0.6, E.twist * 0.5, 0);
+      b.neck.rotation.set(s.emote.id === 'laugh' ? -0.4 : 0.05, 0, E.tilt);
+      this.root.updateMatrixWorld(true);
+      for (const k of ['R', 'L']) {
+        const tg = E[k];
+        this.armIKWorld(k, _v.set(tg[0], tg[1], tg[2]).applyMatrix4(this.root.matrixWorld));
+        b['hand' + k].quaternion.identity();
+      }
+      return;
+    }
+    b.hips.position.x = 0;
     this.root.updateMatrixWorld(true);
     this.armIK('R', this.gripR);
     this.armIK('L', this.gripL);
+  }
+
+  armIKWorld(k, targetWorld) {
+    const b = this.b;
+    const sh = b['sh' + k];
+    const ua = b['ua' + k];
+    const fa = b['fa' + k];
+    const shW = this._sh.setFromMatrixPosition(sh.matrixWorld);
+    const l1 = 0.285;
+    const l2 = 0.31;
+    const d = this._d.subVectors(targetWorld, shW);
+    let dist = d.length();
+    dist = Math.min(Math.max(dist, 0.08), (l1 + l2) * 0.999);
+    d.normalize();
+    const a = (l1 * l1 - l2 * l2 + dist * dist) / (2 * dist);
+    const h = Math.sqrt(Math.max(0, l1 * l1 - a * a));
+    const out = this._out.set(k === 'R' ? 1 : -1, 0, 0).transformDirection(b.chest.matrixWorld);
+    const hint = this._hint.copy(DOWN).addScaledVector(out, 0.8).normalize();
+    hint.addScaledVector(d, -hint.dot(d)).normalize();
+    const elbow = this._e.copy(shW).addScaledVector(d, a).addScaledVector(hint, h);
+    const handW = this._h.copy(shW).addScaledVector(d, dist);
+    elbow.applyMatrix4(_m.copy(sh.matrixWorld).invert());
+    ua.quaternion.setFromUnitVectors(DOWN, elbow.normalize());
+    ua.updateMatrixWorld(true);
+    handW.applyMatrix4(_m.copy(ua.matrixWorld).invert()).sub(fa.position);
+    fa.quaternion.setFromUnitVectors(DOWN, handW.normalize());
+    fa.updateMatrixWorld(true);
   }
 
   armIK(k, gripLocal) {
