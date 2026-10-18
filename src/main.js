@@ -27,6 +27,7 @@ import { Profile } from './game/profile.js';
 import { createLobby } from './world/lobby.js';
 import { ShopUI } from './ui/shop.js';
 import { AvatarCharacter } from './game/avatar.js';
+import { MenuDirector } from './ui/menu.js';
 
 const $ = (id) => document.getElementById(id);
 const SETTINGS_KEY = 'kindling.settings';
@@ -164,11 +165,8 @@ async function boot() {
   for (const o of hidden) o.visible = false;
   R.render(0);
 
+  const director = new MenuDirector({ el: $('menu'), camera, monsters, player, onLightning: (s) => game.lightning(s) });
   const menuTick = (dt, t) => {
-    const a = t * 0.045;
-    camera.position.set(Math.sin(a) * 7, 2.3 + Math.sin(t * 0.13) * 0.4, 12 + Math.cos(a) * 2);
-    camera.lookAt(Math.sin(a * 0.7) * 3, 1.4, -34);
-    if (camera.fov !== 55) { camera.fov = 55; camera.updateProjectionMatrix(); }
     monsters.update(dt, game.time, []);
     for (const m of monsters.monsters) {
       m.speedNow = Math.min(m.speedNow, 0.55);
@@ -179,8 +177,10 @@ async function boot() {
     player.yaw = 0.1;
     player.char.update(dt, player);
     game.time += dt;
+    game.updateFlash(dt);
     debris.update(dt, game.time);
     laserFX.update(dt, game.time, false, player.muzzle || camera.position, camera.position, false);
+    director.update(dt, t);
   };
 
   const show = (id, on) => $(id).classList.toggle('hidden', !on);
@@ -257,7 +257,18 @@ async function boot() {
     show(from, false);
     show('settings', true);
   };
-  $('btn-play').onclick = startGame;
+  $('btn-play').onclick = async () => {
+    if (director.leaving) return;
+    audio.init();
+    await director.leave();
+    const f = $('fade');
+    f.style.transition = 'none';
+    f.classList.add('on');
+    void f.offsetWidth;
+    f.style.transition = '';
+    await startGame();
+    requestAnimationFrame(() => requestAnimationFrame(() => f.classList.remove('on')));
+  };
   $('btn-again').onclick = () => {
     show('gameover', false);
     hud.show(true);
@@ -268,7 +279,7 @@ async function boot() {
   };
   $('btn-settings').onclick = () => openSettings('menu');
   $('btn-pause-settings').onclick = () => openSettings('pause');
-  $('btn-settings-back').onclick = () => { show('settings', false); show(settingsFrom, true); };
+  $('btn-settings-back').onclick = () => { show('settings', false); show(settingsFrom, true); if (settingsFrom === 'menu') director.enter(true); };
   $('btn-resume').onclick = () => { show('pause', false); paused = false; input.lock(); };
   const toMenu = () => {
     mode = 'menu';
@@ -295,6 +306,7 @@ async function boot() {
     R.final.uniforms.uGhost.value = 0;
     player.setGhost(false);
     menuMonsters();
+    director.enter();
     refreshMenu();
   };
   $('btn-quit').onclick = toMenu;
@@ -411,13 +423,15 @@ async function boot() {
 
   window.kindling = {
     THREE, game, R, scene, camera, sticks, debris, monsters, barrier, bonfire, player, physics, audio, input, hud, settings, lobby, profile, shopUI, applyLook, get avatar() { return avatarChar; },
-    tick, startGame, toMenu, applyPreset,
+    tick, startGame, toMenu, applyPreset, director,
     run(seconds, dt = 1 / 60) { const n = Math.round(seconds / dt); for (let i = 0; i < n; i++) tick(dt); },
     sim(seconds, dt = 1 / 30) { skipRender = true; try { const n = Math.round(seconds / dt); for (let i = 0; i < n; i++) tick(dt); } finally { skipRender = false; } },
   };
   setLoad(1, 'Ready');
-  show('loading', false);
+  director.enter();
   show('menu', true);
+  $('loading').classList.add('out');
+  setTimeout(() => { show('loading', false); $('loading').classList.remove('out'); }, 900);
 }
 
 boot().catch((e) => {

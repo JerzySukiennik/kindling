@@ -167,6 +167,13 @@ export class Game {
     this.flashAge = 0;
   }
 
+  updateFlash(dt) {
+    this.flashAge = (this.flashAge || 0) + dt;
+    this.flash = Math.max(0, (this.flash || 0) - dt * 1.6);
+    const fl = this.flash * (this.flashAge < 0.25 ? 0.55 + 0.45 * Math.sin(this.flashAge * 70) : 1);
+    this.lightningLevel = Math.max(0, fl);
+  }
+
   applyLoadout() {
     this.player.canDouble = this.profile.has('abilities', 'double');
   }
@@ -286,10 +293,7 @@ export class Game {
     const now = this.time;
     const hit = this.audio.ready && this.phase !== 'lobby' ? this.audio.musicTransient(dt) : 0;
     if (hit > 0 && !this.introSync && this.phase !== 'gameover') this.lightning(0.3 + hit * 0.45);
-    this.flashAge = (this.flashAge || 0) + dt;
-    this.flash = Math.max(0, (this.flash || 0) - dt * 1.6);
-    const fl = this.flash * (this.flashAge < 0.25 ? 0.55 + 0.45 * Math.sin(this.flashAge * 70) : 1);
-    this.lightningLevel = Math.max(0, fl);
+    this.updateFlash(dt);
     const playing = this.phase !== 'menu' && this.phase !== 'gameover' && this.phase !== 'transition';
     const canControl = playing && !this.uiOpen && (input.locked || this.bot);
     const control = canControl && this.player.alive;
