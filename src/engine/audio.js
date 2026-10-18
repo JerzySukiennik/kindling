@@ -74,6 +74,10 @@ export class Audio {
     this.musicGain = c.createGain();
     this.musicGain.gain.value = this.vol.music;
     this.musicGain.connect(this.master);
+    this.lobbyGain = c.createGain();
+    this.lobbyGain.gain.value = 0;
+    this.lobbyGain.connect(this.master);
+    this.matchFade = c.createGain();
     this.analyser = c.createAnalyser();
     this.analyser.fftSize = 1024;
     this.musicGain.connect(this.analyser);
@@ -488,7 +492,7 @@ export class Audio {
     if (this.ctx) {
       if (this.musicSrc) this.musicSrc.disconnect();
       this.musicSrc = this.ctx.createMediaElementSource(a);
-      this.musicSrc.connect(this.musicGain);
+      this.musicSrc.connect(this.matchFade).connect(this.musicGain);
     }
   }
 
@@ -496,7 +500,7 @@ export class Audio {
     if (!this.music) await this.setupMusic();
     if (this.music && this.ctx && !this.musicSrc) {
       this.musicSrc = this.ctx.createMediaElementSource(this.music);
-      this.musicSrc.connect(this.musicGain);
+      this.musicSrc.connect(this.matchFade).connect(this.musicGain);
     }
     if (this.music) { try { await this.music.play(); } catch (e) { /* autoplay blocked */ } }
   }
@@ -583,23 +587,79 @@ export class Audio {
     this.musicName = file ? file.name : 'None';
     if (file) {
       this.attachMusic(URL.createObjectURL(file));
-      if (this.ready) this.music.play().catch(() => {});
     } else {
       if (this.music) { this.music.pause(); this.music = null; }
       if (this.musicSrc) { this.musicSrc.disconnect(); this.musicSrc = null; }
       await this.setupMusic();
       if (this.music && this.ready) {
         this.musicSrc = this.ctx.createMediaElementSource(this.music);
-        this.musicSrc.connect(this.musicGain);
-        this.music.play().catch(() => {});
+        this.musicSrc.connect(this.matchFade).connect(this.musicGain);
       }
     }
+  }
+
+  async setupLobby() {
+    let url = null;
+    let name = null;
+    try {
+      const r = await fetch('music/ghostbusters.mp3', { method: 'HEAD' });
+      if (r.ok) { url = 'music/ghostbusters.mp3'; name = 'Ghostbusters (local file)'; }
+    } catch (e) { /* no local file */ }
+    const stored = await idbGet('track-lobby');
+    if (stored && stored.blob) { url = URL.createObjectURL(stored.blob); name = stored.name; }
+    this.lobbyName = name || 'None';
+    if (this.lobbyEl) { this.lobbyEl.pause(); this.lobbyEl.src = ''; }
+    if (this.lobbySrc) { this.lobbySrc.disconnect(); this.lobbySrc = null; }
+    this.lobbyEl = null;
+    if (!url) return;
+    const a = new window.Audio();
+    a.src = url;
+    a.loop = true;
+    this.lobbyEl = a;
+    if (this.ctx) {
+      this.lobbySrc = this.ctx.createMediaElementSource(a);
+      this.lobbySrc.connect(this.lobbyGain);
+    }
+  }
+
+  async setLobbyTrack(file) {
+    await idbSet('track-lobby', file ? { blob: file, name: file.name } : null);
+    await this.setupLobby();
+    if (this.scene === 'lobby') this.toLobby();
+  }
+
+  async toLobby() {
+    this.scene = 'lobby';
+    if (!this.ctx) return;
+    if (this.lobbyEl === undefined) await this.setupLobby();
+    if (this.lobbyEl && !this.lobbySrc) { this.lobbySrc = this.ctx.createMediaElementSource(this.lobbyEl); this.lobbySrc.connect(this.lobbyGain); }
+    const t = this.ctx.currentTime;
+    this.matchFade.gain.cancelScheduledValues(t);
+    this.matchFade.gain.setTargetAtTime(0, t, 0.5);
+    this.lobbyGain.gain.cancelScheduledValues(t);
+    this.lobbyGain.gain.setTargetAtTime(this.vol.music, t, 0.6);
+    if (this.lobbyEl) this.lobbyEl.play().catch(() => {});
+    clearTimeout(this.pauseT);
+    this.pauseT = setTimeout(() => { if (this.scene === 'lobby' && this.music) this.music.pause(); }, 2500);
+  }
+
+  async toMatch() {
+    this.scene = 'match';
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.lobbyGain.gain.cancelScheduledValues(t);
+    this.lobbyGain.gain.setTargetAtTime(0, t, 0.3);
+    this.matchFade.gain.cancelScheduledValues(t);
+    this.matchFade.gain.setValueAtTime(1, t);
+    clearTimeout(this.pauseT);
+    this.pauseT = setTimeout(() => { if (this.scene === 'match' && this.lobbyEl) this.lobbyEl.pause(); }, 1800);
   }
 
   setVolumes(music, sfx) {
     this.vol.music = music;
     this.vol.sfx = sfx;
     if (this.musicGain) this.musicGain.gain.value = music;
+    if (this.lobbyGain && this.scene === 'lobby') this.lobbyGain.gain.value = music;
     if (this.sfx) this.sfx.gain.value = sfx;
   }
 }

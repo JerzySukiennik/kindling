@@ -6,6 +6,7 @@ export class HUD {
       hud: $('hud'), round: $('hud-round'), status: $('hud-status'), msg: $('hud-msg'), sub: $('hud-sub'),
       candy: $('candy-count'), candyBox: $('hud-candy'), heat: $('heat-arc'), cross: $('crosshair'),
       ghost: $('hud-ghost'), click: $('hud-click'), popups: $('popups'), debug: $('hud-debug'),
+      prompt: $('hud-prompt'), timer: $('hud-timer'), abilities: $('hud-abilities'),
     };
     this.msgTimer = 0;
     this.lastCandy = -1;
@@ -15,7 +16,7 @@ export class HUD {
 
   show(on) { this.el.hud.classList.toggle('hidden', !on); }
 
-  setRound(n) { this.el.round.textContent = `Round ${n}`; }
+  setRound(text) { this.el.round.textContent = text; }
 
   setStatus(s) {
     if (s === this.lastStatus) return;
@@ -66,6 +67,27 @@ export class HUD {
     d.innerHTML = candy ? `<svg class="cc"><use href="#candy"/></svg>${text}` : text;
     this.el.popups.appendChild(d);
     setTimeout(() => d.remove(), 1150);
+  }
+
+  prompt(text) {
+    if (text === this.lastPrompt) return;
+    this.lastPrompt = text;
+    this.el.prompt.classList.toggle('hidden', !text);
+    if (text) this.el.prompt.querySelector('span').textContent = text;
+  }
+
+  timer(text) {
+    if (text === this.lastTimer) return;
+    this.lastTimer = text;
+    this.el.timer.classList.toggle('hidden', !text);
+    if (text) this.el.timer.textContent = text;
+  }
+
+  abilities(list) {
+    const key = list.map((a) => a.key + a.state + Math.round(a.cd * 20)).join('|');
+    if (key === this.lastAb) return;
+    this.lastAb = key;
+    this.el.abilities.innerHTML = list.map((a) => `<div class="ab ${a.state}"><kbd>${a.key}</kbd><b>${a.name}</b><div class="cd" style="height:${Math.round(a.cd * 100)}%"></div></div>`).join('');
   }
 
   debug(text) {

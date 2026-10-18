@@ -23,6 +23,10 @@ import { Game } from './game/game.js';
 import { Particles } from './fx/particles.js';
 import { LaserFX } from './fx/laser.js';
 import { HUD } from './ui/hud.js';
+import { Profile } from './game/profile.js';
+import { createLobby } from './world/lobby.js';
+import { ShopUI } from './ui/shop.js';
+import { AvatarCharacter } from './game/avatar.js';
 
 const $ = (id) => document.getElementById(id);
 const SETTINGS_KEY = 'kindling.settings';
@@ -78,13 +82,38 @@ async function boot() {
   const barrier = new Barrier(scene, assets, physics);
   const particles = new Particles(scene);
   const bonfire = new Bonfire(scene, sticks, particles);
+  const lobby = createLobby(scene, assets, cem, bonfire);
   const player = new Player(scene, camera, scatter.obstacles);
+  player.lobbyObstacles = lobby.obstacles;
+  player.lobbySolids = lobby.solids;
+  const profile = new Profile();
   const laserFX = new LaserFX(scene);
+  const laserFX2 = new LaserFX(scene);
+  const laserFX3 = new LaserFX(scene);
+  laserFX2.uniforms.uWidth.value = 0.06;
+  laserFX3.uniforms.uWidth.value = 0.06;
+  const baseChar = player.char;
   const hud = new HUD();
   const audio = new Audio();
   const input = new Input(R.renderer.domElement);
   input.sensitivity = settings.sens;
-  const game = new Game({ scene, camera, renderer: R, sticks, debris, monsters, barrier, bonfire, player, laserFX, particles, audio, hud, physics, props });
+  const game = new Game({ scene, camera, renderer: R, sticks, debris, monsters, barrier, bonfire, player, laserFX, laserFX2, laserFX3, particles, audio, hud, physics, props, lobby, profile });
+  game.getIntro = () => audio.introHit;
+  let avatarChar = null;
+  const applyLook = () => {
+    const c = profile.beamColor();
+    for (const fx of [laserFX, laserFX2, laserFX3]) fx.setColor(c);
+    baseChar.setBeamColor(c);
+    if (avatarChar) avatarChar.setBeamColor(c);
+    const cos = profile.equipped('costume');
+    if (cos === 'jurek' && avatarChar) player.setCharacter(avatarChar);
+    else {
+      player.setCharacter(baseChar);
+      baseChar.setCostume(cos === 'jurek' ? 'keeper' : cos);
+    }
+  };
+  const shopUI = new ShopUI(profile, () => { applyLook(); game.applyLoadout(); });
+  applyLook();
 
   const applyPreset = (name) => {
     const real = name === 'auto' ? (applyPreset.auto || 'medium') : name;
@@ -100,6 +129,17 @@ async function boot() {
   window.addEventListener('resize', () => particles.setScale(R.renderer.domElement.height, camera.fov));
   audio.setVolumes(settings.music, settings.sfx);
   audio.setupMusic().then(() => { $('music-name').textContent = audio.musicName; audio.analyzeIntro(); });
+  audio.setupLobby().then(() => { $('lobby-music-name').textContent = audio.lobbyName; });
+  fetch('private/jurek_avatar.glb', { method: 'HEAD' }).then(async (r) => {
+    if (!r.ok) return;
+    avatarChar = await AvatarCharacter.load(scene, 'private/jurek_avatar.glb', profile.beamColor());
+    shopUI.extraCostumes = [{ id: 'jurek', name: 'Jurek', desc: 'You. RTFKT hoodie, H&M sweatpants, green Crocs.', price: 0, free: true }];
+    avatarChar.root.visible = true;
+    try { await R.renderer.compileAsync(avatarChar.root, camera, scene); } catch (e) { /* compiled on first draw */ }
+    avatarChar.root.visible = false;
+    applyLook();
+    if (shopUI.open) shopUI.render();
+  }).catch(() => {});
 
   setLoad(0.96, 'Lighting the fire');
   await new Promise((r) => setTimeout(r, 0));
@@ -144,8 +184,9 @@ async function boot() {
 
   const show = (id, on) => $(id).classList.toggle('hidden', !on);
   const refreshMenu = () => {
-    $('menu-candy').textContent = game.bank;
-    $('menu-best').textContent = game.best ? `Best: round ${game.best}` : '';
+    $('menu-candy').textContent = profile.candy;
+    const b = profile.data.stats.bestRound;
+    $('menu-best').textContent = b ? `Best: round ${b}` : '';
   };
   refreshMenu();
 
@@ -153,9 +194,9 @@ async function boot() {
     await audio.init();
     audio.resume();
     if (!audio.music) await audio.setupMusic();
-    const introHit = await audio.analyzeIntro();
+    await audio.analyzeIntro();
     await audio.playMusic();
-    audio.restartMusic();
+    audio.music && audio.music.pause();
     show('menu', false);
     show('gameover', false);
     show('pause', false);
@@ -165,15 +206,27 @@ async function boot() {
     mode = 'play';
     paused = false;
     monsters.clear();
-    game.newGame(introHit);
+    game.enterLobby();
     input.enabled = true;
     input.lock();
     autoQ.reset();
   };
 
+  game.events.fade = (on) => $('fade').classList.toggle('on', on);
+  game.events.openShop = (id) => {
+    game.uiOpen = true;
+    input.unlock();
+    shopUI.show(id === 'wardrobe' ? 'wardrobe' : 'shop');
+  };
+  shopUI.onClose = () => {
+    game.uiOpen = false;
+    lobby.drawBoard(profile);
+    if (mode === 'play') input.lock();
+  };
+
   input.onLockChange = (locked) => {
-    hud.clickPrompt(!locked && mode === 'play' && !paused && !game.bot);
-    if (!locked && mode === 'play' && game.phase !== 'gameover' && !game.bot) {
+    hud.clickPrompt(!locked && mode === 'play' && !paused && !game.bot && !game.uiOpen);
+    if (!locked && mode === 'play' && game.phase !== 'gameover' && !game.bot && !game.uiOpen) {
       paused = true;
       show('pause', true);
     }
@@ -202,7 +255,14 @@ async function boot() {
     show('settings', true);
   };
   $('btn-play').onclick = startGame;
-  $('btn-again').onclick = startGame;
+  $('btn-again').onclick = () => {
+    show('gameover', false);
+    hud.show(true);
+    mode = 'play';
+    input.enabled = true;
+    game.enterLobby();
+    input.lock();
+  };
   $('btn-settings').onclick = () => openSettings('menu');
   $('btn-pause-settings').onclick = () => openSettings('pause');
   $('btn-settings-back').onclick = () => { show('settings', false); show(settingsFrom, true); };
@@ -217,7 +277,14 @@ async function boot() {
     show('gameover', false);
     show('menu', true);
     debris.clearAll();
+    shopUI.close();
+    game.uiOpen = false;
     game.phase = 'menu';
+    player.setArea('zone');
+    hud.timer(null);
+    hud.prompt(null);
+    hud.abilities([]);
+    if (audio.ready) { audio.toMatch(); if (audio.music) audio.music.pause(); if (audio.lobbyEl) audio.lobbyEl.pause(); }
     barrier.reset();
     props.restoreCandles();
     laserFX.update(0, 0, false, camera.position, camera.position, false);
@@ -244,6 +311,18 @@ async function boot() {
   $('btn-music-clear').onclick = async () => {
     await audio.setUserTrack(null);
     $('music-name').textContent = audio.musicName;
+  };
+  $('btn-lobby-music').onclick = () => $('lobby-music-file').click();
+  $('lobby-music-file').onchange = async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    await audio.init();
+    await audio.setLobbyTrack(f);
+    $('lobby-music-name').textContent = audio.lobbyName;
+  };
+  $('btn-lobby-music-clear').onclick = async () => {
+    await audio.setLobbyTrack(null);
+    $('lobby-music-name').textContent = audio.lobbyName;
   };
   window.addEventListener('keydown', (e) => {
     if (e.code === 'F3') { showDebug = !showDebug; hud.debug(''); }
@@ -272,6 +351,7 @@ async function boot() {
 
   let showDebug = false;
   let skipRender = false;
+  const wardCam = new THREE.Vector3();
   let fpsAcc = 0;
   let fpsN = 0;
   let fpsShow = 0;
@@ -288,6 +368,13 @@ async function boot() {
     particles.update(dt, U.time.value);
     bonfire.update(dt, U.time.value);
     props.update(U.time.value);
+    if (shopUI.open && shopUI.mode === 'wardrobe') {
+      const f = player._fwd;
+      const want = new THREE.Vector3(player.pos.x + f.x * 2.7 + f.z * 0.9, player.pos.y + 1.35, player.pos.z + f.z * 2.7 - f.x * 0.9);
+      wardCam.lerp(want, Math.min(1, dt * 5 + 0.02));
+      camera.position.copy(wardCam);
+      camera.lookAt(player.pos.x + f.z * 1.25, player.pos.y + 1.0, player.pos.z - f.x * 1.25);
+    } else wardCam.copy(camera.position);
     sky.update(U.time.value, U.fire.value, game.lightningLevel || 0);
     R.final.uniforms.uFlash.value = (game.lightningLevel || 0) * 0.22;
     hud.update(dt);
@@ -319,7 +406,7 @@ async function boot() {
   requestAnimationFrame(frame);
 
   window.kindling = {
-    THREE, game, R, scene, camera, sticks, debris, monsters, barrier, bonfire, player, physics, audio, input, hud, settings,
+    THREE, game, R, scene, camera, sticks, debris, monsters, barrier, bonfire, player, physics, audio, input, hud, settings, lobby, profile, shopUI, applyLook, get avatar() { return avatarChar; },
     tick, startGame, toMenu, applyPreset,
     run(seconds, dt = 1 / 60) { const n = Math.round(seconds / dt); for (let i = 0; i < n; i++) tick(dt); },
     sim(seconds, dt = 1 / 30) { skipRender = true; try { const n = Math.round(seconds / dt); for (let i = 0; i < n; i++) tick(dt); } finally { skipRender = false; } },

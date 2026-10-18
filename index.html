@@ -42,7 +42,7 @@
     <span class="candy-wallet"><svg class="cc"><use href="#candy"/></svg><b id="menu-candy">0</b></span>
     <span id="menu-best"></span>
   </div>
-  <div class="controls-hint">WASD move · Mouse aim · Hold LMB laser · Hold RMB zoom · Space jump · Shift sprint · Esc pause</div>
+  <div class="controls-hint">WASD move · Mouse aim · LMB laser · RMB zoom · Space jump · Shift sprint · E use · Esc pause</div>
 </div>
 
 <div id="settings" class="screen panel hidden">
@@ -59,12 +59,20 @@
   <label class="row"><span>Music volume</span><input id="set-music" type="range" min="0" max="1" step="0.01"></label>
   <label class="row"><span>Effects volume</span><input id="set-sfx" type="range" min="0" max="1" step="0.01"></label>
   <label class="row"><span>Mouse sensitivity</span><input id="set-sens" type="range" min="0.2" max="2.5" step="0.05"></label>
-  <div class="row"><span>Music track</span>
+  <div class="row"><span>Night music</span>
     <div class="row-right">
       <span id="music-name" class="dim">None</span>
       <button id="btn-music" class="btn small">Load file</button>
       <button id="btn-music-clear" class="btn small ghost">Reset</button>
       <input id="music-file" type="file" accept="audio/*" hidden>
+    </div>
+  </div>
+  <div class="row"><span>Hill music</span>
+    <div class="row-right">
+      <span id="lobby-music-name" class="dim">None</span>
+      <button id="btn-lobby-music" class="btn small">Load file</button>
+      <button id="btn-lobby-music-clear" class="btn small ghost">Reset</button>
+      <input id="lobby-music-file" type="file" accept="audio/*" hidden>
     </div>
   </div>
   <button id="btn-settings-back" class="btn">Back</button>
@@ -87,7 +95,7 @@
     <div><b id="go-candy">0</b><span>candy corn earned</span></div>
   </div>
   <div class="menu-buttons">
-    <button id="btn-again" class="btn primary">Play again</button>
+    <button id="btn-again" class="btn primary">Back to the hill</button>
     <button id="btn-go-menu" class="btn ghost">Menu</button>
   </div>
 </div>
@@ -110,8 +118,14 @@
   <div id="hud-ghost" class="hidden">You were taken. Back next round.</div>
   <div id="hud-click" class="hidden">Click to play</div>
   <div id="popups"></div>
+  <div id="hud-prompt" class="hidden"><kbd>E</kbd><span></span></div>
+  <div id="hud-abilities"></div>
+  <div id="hud-timer" class="hidden"></div>
   <div id="hud-debug" class="hidden"></div>
 </div>
+
+<div id="shop" class="hidden"></div>
+<div id="fade"></div>
 
 <svg width="0" height="0" style="position:absolute">
   <defs>

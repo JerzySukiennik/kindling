@@ -12,6 +12,7 @@ export const CORN = { x0: -70, x1: 70, z0: -112, z1: -64.5 };
 export const PIT = { x0: -18, x1: 18, z0: 13.2, z1: 20.5, depth: 1.6 };
 export const TERRAIN = { x0: -110, x1: 110, z0: -170, z1: 70 };
 export const SLOT_H = [0.02, 0.27];
+export const LOBBY = { x0: -26.3, x1: 26.3, z0: 29.4, z1: 62.6, y: 2.6, spawn: { x: 0, z: 33.5 } };
 
 export const CRYPT = { x: -33.5, z: -31, rot: Math.PI / 2 };
 export const STATUE = { x: 26.5, z: -6.5, rot: -0.9 };
@@ -126,6 +127,8 @@ export function groundHeight(x, z) {
   h = h * (1 - slot) + SLOT_H[0] * slot;
   const slot2 = (1 - smoothstep(0.7, 2.2, Math.abs(z - BARRIER_STOP_Z))) * (1 - smoothstep(22, 25, ax));
   h = h * (1 - slot2) + SLOT_H[1] * slot2;
+  const lob = rectMask(x, z, { x0: LOBBY.x0 - 1.5, x1: LOBBY.x1 + 1.5, z0: LOBBY.z0 - 1.2, z1: LOBBY.z1 + 1.2 }, 5.5);
+  if (lob > 0) h = h * (1 - lob) + (LOBBY.y + 0.05 * n2(x * 0.5, z * 0.5) + moundHeight(x, z) * 0) * lob;
   if (z > 4 && z < 30) {
     const p = pitMask(x, z);
     h -= PIT.depth * p * (0.92 + 0.08 * n1(x * 0.5, z * 0.5));

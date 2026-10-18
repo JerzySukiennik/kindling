@@ -16,6 +16,8 @@ export class Physics {
     this.acc = 0;
     const { verts, idx } = terrainColliderData(-23.5, 23.5, -66, 24, 0.5);
     this.world.createCollider(RAPIER.ColliderDesc.trimesh(verts, idx).setFriction(0.9).setRestitution(0.05));
+    const lob = terrainColliderData(-27, 27, 27, 64, 0.75);
+    this.world.createCollider(RAPIER.ColliderDesc.trimesh(lob.verts, lob.idx).setFriction(0.9).setRestitution(0.05));
     for (const side of [-1, 1]) {
       const wall = RAPIER.ColliderDesc.cuboid(0.15, 2.5, 34).setTranslation(side * (FENCE_X - 0.15), 1.5, -30);
       this.world.createCollider(wall);

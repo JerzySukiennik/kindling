@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Character } from './character.js';
-import { groundHeight, ZONE, LAMPS } from '../world/layout.js';
+import { groundHeight, ZONE, LAMPS, LOBBY } from '../world/layout.js';
 
 export const JUMP_V = 8.2;
 export const GRAVITY = 20;
@@ -22,7 +22,13 @@ export class Player {
     this.justLanded = false;
     this.camPos = new THREE.Vector3();
     this.camDir = new THREE.Vector3();
-    this.obstacles = [...obstacles, ...LAMPS.map((l) => ({ x: l.x, z: l.z, r: 0.35 }))];
+    this.zoneObstacles = [...obstacles, ...LAMPS.map((l) => ({ x: l.x, z: l.z, r: 0.35 }))];
+    this.obstacles = this.zoneObstacles;
+    this.lobbyObstacles = [];
+    this.solids = [];
+    this.area = 'zone';
+    this.canDouble = false;
+    this.jumpsUsed = 0;
     this.shake = 0;
     this.fovKick = 0;
     this.aimAmt = 0;
@@ -33,6 +39,33 @@ export class Player {
     this._v = new THREE.Vector3();
     this._fwd = new THREE.Vector3();
     this._right = new THREE.Vector3();
+  }
+
+  setCharacter(ch) {
+    if (this.char === ch) return;
+    this.char.root.visible = false;
+    this.char = ch;
+    ch.root.visible = true;
+    ch.setGhost(this.ghost);
+  }
+
+  setArea(area) {
+    this.area = area;
+    this.obstacles = area === 'lobby' ? this.lobbyObstacles : this.zoneObstacles;
+    this.solids = area === 'lobby' ? this.lobbySolids || [] : [];
+    this.pushed = false;
+    if (area === 'lobby') { this.pos.set(LOBBY.spawn.x, LOBBY.y, LOBBY.spawn.z); this.yaw = Math.PI; }
+    else { this.pos.set(0, groundHeight(0, 6), 6); this.yaw = 0; }
+    this.vel.set(0, 0, 0);
+    this.pitch = 0.04;
+  }
+
+  groundAt(x, z, feet) {
+    let g = groundHeight(x, z);
+    for (const s of this.solids) {
+      if (x > s.x0 && x < s.x1 && z > s.z0 && z < s.z1 && feet >= s.top - 0.4 && s.top > g) g = s.top;
+    }
+    return g;
   }
 
   reset() {
@@ -79,16 +112,42 @@ export class Player {
     if (this.ghost) {
       this.vel.y = 0;
       this.pos.addScaledVector(this.vel, dt);
-      this.pos.y = groundHeight(this.pos.x, this.pos.z) + 0.6 + Math.sin(performance.now() * 0.002) * 0.15;
+      this.pos.y = this.groundAt(this.pos.x, this.pos.z, 99) + 0.6 + Math.sin(performance.now() * 0.002) * 0.15;
     } else {
-      if (allowControl && this.onGround && input.hit('Space')) {
-        this.vel.y = JUMP_V;
-        this.onGround = false;
-        this.onJump();
+      if (this.onGround) this.jumpsUsed = 0;
+      if (allowControl && input.hit('Space')) {
+        if (this.onGround) {
+          this.vel.y = JUMP_V;
+          this.onGround = false;
+          this.jumpsUsed = 1;
+          this.onJump(false);
+        } else if (this.canDouble && this.jumpsUsed < 2) {
+          this.vel.y = JUMP_V * 0.88;
+          this.jumpsUsed = 2;
+          this.onJump(true);
+        }
       }
       this.vel.y -= GRAVITY * dt;
+      const ox = this.pos.x;
+      const oz = this.pos.z;
       this.pos.addScaledVector(this.vel, dt);
-      const gy = groundHeight(this.pos.x, this.pos.z);
+      const feetPrev = this.pos.y - this.vel.y * dt;
+      for (const sd of this.solids) {
+        const pad = 0.3;
+        if (this.pos.x > sd.x0 - pad && this.pos.x < sd.x1 + pad && this.pos.z > sd.z0 - pad && this.pos.z < sd.z1 + pad && feetPrev < sd.top - 0.4) {
+          const insideBefore = ox > sd.x0 - pad && ox < sd.x1 + pad && oz > sd.z0 - pad && oz < sd.z1 + pad;
+          if (!insideBefore) { this.pos.x = ox; this.pos.z = oz; }
+          else {
+            const dl = this.pos.x - (sd.x0 - pad);
+            const dr = sd.x1 + pad - this.pos.x;
+            const db = this.pos.z - (sd.z0 - pad);
+            const df = sd.z1 + pad - this.pos.z;
+            const mn = Math.min(dl, dr, db, df);
+            if (mn === dl) this.pos.x = sd.x0 - pad; else if (mn === dr) this.pos.x = sd.x1 + pad; else if (mn === db) this.pos.z = sd.z0 - pad; else this.pos.z = sd.z1 + pad;
+          }
+        }
+      }
+      const gy = this.groundAt(this.pos.x, this.pos.z, Math.max(this.pos.y, feetPrev));
       if (this.pos.y <= gy) {
         if (!this.onGround) { this.justLanded = true; this.onLand(Math.abs(this.vel.y)); }
         this.pos.y = gy;
@@ -101,8 +160,13 @@ export class Player {
         this.onGround = false;
       }
     }
-    this.pos.x = THREE.MathUtils.clamp(this.pos.x, ZONE.x0 + 0.3, ZONE.x1 - 0.3);
-    this.pos.z = THREE.MathUtils.clamp(this.pos.z, ZONE.z0 + 0.25, ZONE.z1 - 0.25);
+    if (this.area === 'lobby') {
+      this.pos.x = THREE.MathUtils.clamp(this.pos.x, LOBBY.x0, LOBBY.x1);
+      this.pos.z = THREE.MathUtils.clamp(this.pos.z, LOBBY.z0, LOBBY.z1);
+    } else {
+      this.pos.x = THREE.MathUtils.clamp(this.pos.x, ZONE.x0 + 0.3, ZONE.x1 - 0.3);
+      this.pos.z = THREE.MathUtils.clamp(this.pos.z, ZONE.z0 + 0.25, this.pushed ? 30 : ZONE.z1 - 0.25);
+    }
     for (const o of this.obstacles) {
       const dx = this.pos.x - o.x;
       const dz = this.pos.z - o.z;

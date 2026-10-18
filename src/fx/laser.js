@@ -109,6 +109,12 @@ export class LaserFX {
     this.power = 0;
   }
 
+  setColor(rgb) {
+    this.color.setRGB(rgb[0], rgb[1], rgb[2]);
+    this.uniforms.uColor.value.copy(this.color);
+    this.muzzle.material.color.copy(this.color).multiplyScalar(4);
+  }
+
   update(dt, t, on, start, end, burning) {
     this.power += ((on ? 1 : 0) - this.power) * Math.min(1, dt * (on ? 30 : 14));
     const p = this.power;
@@ -127,7 +133,7 @@ export class LaserFX {
     this.impact.material.opacity = p;
     this.impact.scale.setScalar((burning ? 0.55 : 0.32) * (0.85 + Math.random() * 0.3));
     this.light.position.copy(end).addScaledVector(this._dir(start, end), -0.25);
-    this.light.color.setRGB(burning ? 1 : 0.6, burning ? 0.55 : 1, burning ? 0.2 : 0.4);
+    if (burning) this.light.color.setRGB(1, 0.55, 0.2); else this.light.color.copy(this.color);
     this.light.intensity = p * (burning ? 9 : 4) * (0.85 + Math.random() * 0.3);
 
   }

@@ -41,7 +41,7 @@ export class Debris {
       .setAngularDamping(0.35)
       .setCcdEnabled(true);
     const body = this.ph.world.createRigidBody(bd);
-    const chunk = { body, parts: [], sticks: 0, state: 'phys', age: 0, burn: 0, mass: 0 };
+    const chunk = { body, parts: [], sticks: 0, state: 'phys', age: 0, burn: 0, mass: 0, autoFade: !!opts.autoFade };
     for (const p of parts) {
       _dir.subVectors(p.b, p.a);
       const len = _dir.length();
@@ -103,14 +103,14 @@ export class Debris {
 
   fieldCount() {
     let n = 0;
-    for (const c of this.chunks) if (c.state === 'phys') n += c.sticks;
+    for (const c of this.chunks) if (c.state === 'phys' && !c.autoFade) n += c.sticks;
     return n;
   }
 
   startWave(follow, speed, height, length, halfX) {
     this.wave = { z: follow(), follow, speed, height, length, halfX, t: 0 };
     for (const c of this.chunks) {
-      if (c.state !== 'phys') continue;
+      if (c.state !== 'phys' || c.autoFade || c.dropped) continue;
       c.state = 'pending';
       c.matrix = this.bodyMatrix(c, new THREE.Matrix4());
       this.ph.world.removeRigidBody(c.body);
@@ -135,6 +135,17 @@ export class Debris {
     for (let i = this.chunks.length - 1; i >= 0; i--) {
       const c = this.chunks[i];
       c.age += dt;
+      if (c.state === 'phys' && c.autoFade && c.age > 4.5) {
+        const k = Math.max(0, 1 - (c.age - 4.5) / 1.2);
+        this.bodyMatrix(c, _bm);
+        for (const part of c.parts) {
+          _m.multiplyMatrices(_bm, part.local);
+          _m.scale(_p.set(k, k, k));
+          this.sticks.setMatrix(part.idx, _m);
+        }
+        if (k <= 0) this.removeChunk(i, false);
+        continue;
+      }
       if (c.state === 'phys') {
         this.applyChunk(c);
         if (c.inPit) {

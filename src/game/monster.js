@@ -233,6 +233,21 @@ export class Monster {
     this.age += dt;
     if (!this.alive) return;
     const T = this.T;
+    if (this.dummy || this.npc) {
+      this.speedNow = 0;
+      this.state = 'walk';
+      this.target = this.lookAt ? this.lookAt : null;
+      this.computeFrame();
+      this.twitch.next -= dt;
+      if (this.twitch.next <= 0) {
+        this.twitch.next = 1.5 + this.rand() * 4;
+        this.twitch.t = 0.25;
+        this.twitch.dir.set(this.rand() - 0.5, (this.rand() - 0.5) * 0.6, this.rand() - 0.5).normalize();
+      }
+      this.twitch.t = Math.max(0, this.twitch.t - dt);
+      this.pose(dt, now);
+      return;
+    }
     let target = null;
     let best = 1e9;
     for (const p of players) {
@@ -284,7 +299,7 @@ export class Monster {
     this.computeFrame();
     this.pos.addScaledVector(this.fwd, this.speedNow * dt);
     for (const o of this.mgr.monsters) {
-      if (o === this || !o.alive) continue;
+      if (o === this || !o.alive || o.dummy || o.npc) continue;
       const ox = this.pos.x - o.pos.x;
       const oz = this.pos.z - o.pos.z;
       const d2 = ox * ox + oz * oz;
@@ -502,11 +517,11 @@ export class Monster {
     }
   }
 
-  raycast(o, d, maxT) {
+  raycast(o, d, maxT, extraR = 0) {
     let best = null;
     for (const s of this.segs) {
       if (!s.attached) continue;
-      const r = Math.max(s.r * 1.15, 0.03);
+      const r = Math.max(s.r * 1.15, 0.03) + extraR;
       const h = rayCapsule(o, d, s.A, s.B, r);
       if (h && h.t < maxT && (!best || h.t < best.t)) best = { seg: s, s: h.s, t: h.t, monster: this };
     }
@@ -641,7 +656,7 @@ export class MonsterManager {
     v.y += 0.6 + Math.random() * energy * 1.4;
     v.z += (Math.random() - 0.5) * energy * 1.6;
     const spin = new THREE.Vector3((Math.random() - 0.5) * 6 * energy, (Math.random() - 0.5) * 6 * energy, (Math.random() - 0.5) * 6 * energy);
-    this.debris.spawn(parts, v, spin);
+    this.debris.spawn(parts, v, spin, { autoFade: m.dummy || m.npc });
   }
 
   onAttackStart(m, p) { this.handlers.attackStart(m, p); }
@@ -649,7 +664,7 @@ export class MonsterManager {
   onDeath(m, how) { this.handlers.death(m, how); }
   onStep(m, at) { this.handlers.step(m, at); }
 
-  get aliveCount() { return this.monsters.filter((m) => m.alive).length; }
+  get aliveCount() { return this.monsters.filter((m) => m.alive && !m.dummy && !m.npc).length; }
 
   update(dt, now, players) {
     for (const m of this.monsters) m.update(dt, now, players);
@@ -663,17 +678,17 @@ export class MonsterManager {
     this.eyes.instanceMatrix.needsUpdate = true;
   }
 
-  raycast(o, d, maxT) {
+  raycast(o, d, maxT, extraR = 0) {
     let best = null;
     const b = this._b;
     for (const m of this.monsters) {
-      if (!m.alive) continue;
+      if (!m.alive || m.npc) continue;
       m.bounds(b);
       T1.subVectors(b.center, o);
       const tc = T1.dot(d);
       const d2 = T1.lengthSq() - tc * tc;
       if (d2 > b.radius * b.radius || tc < -b.radius) continue;
-      const h = m.raycast(o, d, best ? best.t : maxT);
+      const h = m.raycast(o, d, best ? best.t : maxT, extraR);
       if (h && (!best || h.t < best.t)) best = h;
     }
     return best;

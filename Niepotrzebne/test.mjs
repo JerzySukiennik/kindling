@@ -122,6 +122,26 @@ if (mode === 'menu') {
   }
   const fin = await page.evaluate(() => { const k = window.kindling; k.sim(5); return { phase: k.game.phase, alive: k.player.alive, burned: k.game.stats.sticks, round: k.game.round, chunks: k.debris.chunks.length }; });
   console.log('after', JSON.stringify(fin));
+} else if (mode === 'lobby') {
+  await page.evaluate(async () => { const k = window.kindling; await k.startGame(); k.sim(1); });
+  await page.waitForTimeout(2500);
+  const shots = JSON.parse(process.env.SHOTS || '[]');
+  for (const sh of shots) {
+    const info = await page.evaluate((sh) => { const k = window.kindling; if (sh.pre) (new Function('k', sh.pre))(k);
+      if (sh.cam) { k.frozen = true; k.camera.position.set(...sh.cam.pos); k.camera.fov = sh.cam.fov || 55; k.camera.updateProjectionMatrix(); k.camera.lookAt(...sh.cam.look); k.R.render(1); }
+      else { k.frozen = false; for (let i = 0; i < 3; i++) k.tick(1 / 60); }
+      return JSON.stringify({ phase: k.game.phase, candy: k.profile.candy, pos: k.player.pos.toArray().map((v) => +v.toFixed(2)), monsters: k.monsters.monsters.length, avatar: !!k.avatar, costume: k.profile.equipped('costume') }); }, sh);
+    console.log(sh.name, info);
+    await page.screenshot({ path: `${outDir}/lobby_${sh.name}.jpg`, quality: 82 });
+    await page.evaluate(() => { window.kindling.frozen = false; });
+  }
+} else if (mode === 'night') {
+  await page.evaluate(async () => { const k = window.kindling; k.game.bot = true; await k.startGame(); k.sim(1); k.game.startNight(); });
+  for (let i = 0; i < secs / 8; i++) {
+    const inf = await page.evaluate(() => { const k = window.kindling; k.sim(8); k.tick(1 / 60); return JSON.stringify({ t: +k.game.time.toFixed(1), phase: k.game.phase, round: k.game.round, alive: k.monsters.aliveCount, player: k.player.alive, area: k.player.area, candy: k.profile.candy, kills: k.game.stats.kills, burned: k.game.stats.sticks }); });
+    console.log(inf);
+  }
+  await page.screenshot({ path: `${outDir}/night_end.jpg`, quality: 80 });
 } else if (mode === 'eval') {
   const code = process.argv[6];
   console.log(await page.evaluate(code));

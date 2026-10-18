@@ -16,8 +16,8 @@ function buildGeometry() {
     }
     arr.push(b);
   };
-  pushAxis(xs, TERRAIN.x0, TERRAIN.x1, [[-26, 26, 0.33], [-50, 50, 0.9], [-1e9, 1e9, 3]]);
-  pushAxis(zs, TERRAIN.z0, TERRAIN.z1, [[-66, 24, 0.33], [-120, 40, 0.9], [-1e9, 1e9, 3]]);
+  pushAxis(xs, TERRAIN.x0, TERRAIN.x1, [[-29, 29, 0.33], [-50, 50, 0.9], [-1e9, 1e9, 3]]);
+  pushAxis(zs, TERRAIN.z0, TERRAIN.z1, [[-66, 24, 0.33], [24, 66, 0.45], [-120, 70, 0.9], [-1e9, 1e9, 3]]);
   const nx = xs.length;
   const nz = zs.length;
   const pos = new Float32Array(nx * nz * 3);

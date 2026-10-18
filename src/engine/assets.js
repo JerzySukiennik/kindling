@@ -3,7 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
 
 const MODELS = ['rocks_grey', 'rocks_tan', 'pebbles', 'branches', 'fire_pit', 'iron_gate', 'statue', 'log_thin', 'log_big', 'stump', 'lantern', 'street_lamp'];
-const TEXSETS = ['forest_leaves_04', 'forest_ground_04', 'mud_forest', 'bark_willow_02', 'bark_willow', 'mossy_rock', 'mossy_stone_wall', 'rusty_metal_04', 'burned_ground_01'];
+const TEXSETS = ['forest_leaves_04', 'forest_ground_04', 'mud_forest', 'bark_willow_02', 'bark_willow', 'mossy_rock', 'mossy_stone_wall', 'rusty_metal_04', 'burned_ground_01', 'rough_wood', 'wood_planks_grey', 'wood_planks_dirt'];
 
 export class Assets {
   constructor(renderer) {

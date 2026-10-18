@@ -74,6 +74,33 @@ function fabricNormal(seed = 1, freq = 0.9) {
   return t;
 }
 
+export function makeGun(M, add) {
+  const gun = new THREE.Group();
+  gun.name = 'gun';
+  add(gun, new RoundedBoxGeometry(0.075, 0.115, 0.32, 3, 0.018), M.dark);
+  add(gun, new RoundedBoxGeometry(0.05, 0.085, 0.2, 2, 0.02), M.dark, 0, -0.02, -0.24);
+  add(gun, new RoundedBoxGeometry(0.06, 0.025, 0.24, 2, 0.008), M.metal, 0, 0.07, 0.02);
+  add(gun, new THREE.CylinderGeometry(0.036, 0.04, 0.3, 20).rotateX(Math.PI / 2), M.metal, 0, 0.01, 0.3);
+  for (let i = 0; i < 5; i++) add(gun, new THREE.TorusGeometry(0.041, 0.006, 6, 18), M.dark, 0, 0.01, 0.19 + i * 0.05);
+  add(gun, new THREE.CylinderGeometry(0.03, 0.044, 0.05, 20).rotateX(Math.PI / 2), M.brass, 0, 0.01, 0.47);
+  const emitter = add(gun, new THREE.CylinderGeometry(0.02, 0.02, 0.012, 16).rotateX(Math.PI / 2), M.glow, 0, 0.01, 0.497);
+  add(gun, new RoundedBoxGeometry(0.04, 0.12, 0.06, 2, 0.012), M.leather, 0, -0.1, -0.06, -0.3, 0, 0);
+  add(gun, new RoundedBoxGeometry(0.036, 0.09, 0.045, 2, 0.012), M.leather, 0, -0.08, 0.17);
+  add(gun, new THREE.CapsuleGeometry(0.014, 0.12, 4, 8).rotateX(Math.PI / 2), M.glow, 0.042, 0.0, -0.02);
+  add(gun, new THREE.CylinderGeometry(0.006, 0.006, 0.12, 6).rotateX(Math.PI / 2), M.brass, -0.04, 0.03, 0.08);
+  return { gun, emitter, muzzleLocal: new THREE.Vector3(0, 0.01, 0.505), gripR: new THREE.Vector3(0, -0.11, -0.05), gripL: new THREE.Vector3(0, -0.08, 0.17) };
+}
+
+export function gunMaterials(beam) {
+  return {
+    leather: new THREE.MeshStandardMaterial({ color: 0x2b1e15, roughness: 0.5, metalness: 0.04 }),
+    metal: new THREE.MeshStandardMaterial({ color: 0x5d6166, roughness: 0.42, metalness: 0.88 }),
+    brass: new THREE.MeshStandardMaterial({ color: 0x6b5a3a, roughness: 0.38, metalness: 0.9 }),
+    dark: new THREE.MeshStandardMaterial({ color: 0x17181a, roughness: 0.5, metalness: 0.6 }),
+    glow: new THREE.MeshBasicMaterial({ color: beam.clone().multiplyScalar(2.6) }),
+  };
+}
+
 export const SKINS = {
   default: { coat: 0x2c2620, coatDark: 0x1f1b17, cloth: 0x1b1b1c, leather: 0x2b1e15, mask: 0x272725, beam: new THREE.Color(0.55, 1.0, 0.3) },
 };
@@ -210,22 +237,14 @@ export class Character {
     const back = lathe([[0.17, 0.06], [0.175, 0.0], [0.2, -0.15], [0.235, -0.35], [0.265, -0.55], [0.285, -0.68]], 10, 1, 0.78, { start: Math.PI * 1.42, len: Math.PI * 0.16, folds: 0.05, foldN: 10 });
     this.backFlap = add(b.hips, back, M.coat, 0, 0.02, -0.005);
 
-    const gun = B('gun', b.chest, 0.11, 0.05, 0.3);
-    this.gun = gun;
-    add(gun, new RoundedBoxGeometry(0.075, 0.115, 0.32, 3, 0.018), M.dark);
-    add(gun, new RoundedBoxGeometry(0.05, 0.085, 0.2, 2, 0.02), M.dark, 0, -0.02, -0.24);
-    add(gun, new RoundedBoxGeometry(0.06, 0.025, 0.24, 2, 0.008), M.metal, 0, 0.07, 0.02);
-    add(gun, new THREE.CylinderGeometry(0.036, 0.04, 0.3, 20).rotateX(Math.PI / 2), M.metal, 0, 0.01, 0.3);
-    for (let i = 0; i < 5; i++) add(gun, new THREE.TorusGeometry(0.041, 0.006, 6, 18), M.dark, 0, 0.01, 0.19 + i * 0.05);
-    add(gun, new THREE.CylinderGeometry(0.03, 0.044, 0.05, 20).rotateX(Math.PI / 2), M.brass, 0, 0.01, 0.47);
-    this.emitter = add(gun, new THREE.CylinderGeometry(0.02, 0.02, 0.012, 16).rotateX(Math.PI / 2), M.glow, 0, 0.01, 0.497);
-    add(gun, new RoundedBoxGeometry(0.04, 0.12, 0.06, 2, 0.012), M.leather, 0, -0.1, -0.06, -0.3, 0, 0);
-    add(gun, new RoundedBoxGeometry(0.036, 0.09, 0.045, 2, 0.012), M.leather, 0, -0.08, 0.17);
-    add(gun, new THREE.CapsuleGeometry(0.014, 0.12, 4, 8).rotateX(Math.PI / 2), M.glow, 0.042, 0.0, -0.02);
-    add(gun, new THREE.CylinderGeometry(0.006, 0.006, 0.12, 6).rotateX(Math.PI / 2), M.brass, -0.04, 0.03, 0.08);
-    this.muzzleLocal = new THREE.Vector3(0, 0.01, 0.505);
-    this.gripR = new THREE.Vector3(0, -0.11, -0.05);
-    this.gripL = new THREE.Vector3(0, -0.08, 0.17);
+    const G = makeGun(M, add);
+    b.chest.add(G.gun);
+    G.gun.position.set(0.11, 0.05, 0.3);
+    this.gun = G.gun;
+    this.emitter = G.emitter;
+    this.muzzleLocal = G.muzzleLocal;
+    this.gripR = G.gripR;
+    this.gripL = G.gripL;
 
     this.phase = 0;
     this.land = 0;
@@ -239,6 +258,7 @@ export class Character {
     this._hint = new THREE.Vector3();
     this._out = new THREE.Vector3();
     const keepSeparate = new Set([this.cell, this.emitter, ...this.skirt, this.backFlap]);
+    this.costumeParts = {};
     const groups = [];
     this.root.traverse((o) => { if (o.isGroup || o === this.root) groups.push(o); });
     for (const g of groups) {
@@ -268,6 +288,110 @@ export class Character {
     }
     this.meshes = [];
     this.root.traverse((o) => { if (o.isMesh) { this.meshes.push(o); o.layers.enable(1); } });
+  }
+
+  setBeamColor(c) {
+    this.mats.glow.color.setRGB(c[0], c[1], c[2]).multiplyScalar(2.6);
+  }
+
+  setCostume(id) {
+    const head = this.b.head;
+    if (!this.defaultHead) this.defaultHead = head.children.filter((o) => o.isMesh);
+    for (const g of Object.values(this.costumeParts)) g.visible = false;
+    const replaceHead = id === 'pumpkin' || id === 'plague' || id === 'bone';
+    for (const m of this.defaultHead) m.visible = !replaceHead;
+    this.mats.coat.color.set(id === 'bone' ? 0x9c968a : 0x2c2620);
+    this.mats.coatDark.color.set(id === 'bone' ? 0x6e695f : 0x1f1b17);
+    if (id === 'keeper') return;
+    if (!this.costumeParts[id]) {
+      const g = new THREE.Group();
+      const add = (geo, mat, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) => {
+        const m = new THREE.Mesh(geo, mat);
+        m.position.set(x, y, z);
+        m.rotation.set(rx, ry, rz);
+        m.castShadow = true;
+        m.receiveShadow = true;
+        m.userData.baseMat = mat;
+        g.add(m);
+        return m;
+      };
+      const tex = (draw) => {
+        const c = document.createElement('canvas');
+        c.width = 512;
+        c.height = 256;
+        draw(c.getContext('2d'), 512, 256);
+        const t = new THREE.CanvasTexture(c);
+        t.colorSpace = THREE.SRGBColorSpace;
+        return t;
+      };
+      if (id === 'witch') {
+        const felt = new THREE.MeshStandardMaterial({ color: 0x1c1420, roughness: 0.9 });
+        add(new THREE.CylinderGeometry(0.27, 0.27, 0.014, 40), felt, 0, 0.17, -0.01, -0.12);
+        const cone = new THREE.ConeGeometry(0.12, 0.46, 28, 8);
+        const p = cone.attributes.position;
+        for (let i = 0; i < p.count; i++) {
+          const y = p.getY(i) + 0.23;
+          p.setZ(i, p.getZ(i) - Math.pow(Math.max(0, y - 0.18), 2) * 1.6);
+        }
+        cone.computeVertexNormals();
+        add(cone, felt, 0, 0.17 + 0.23, -0.03, -0.12);
+        add(new THREE.CylinderGeometry(0.122, 0.124, 0.035, 28, 1, true), new THREE.MeshStandardMaterial({ color: 0x5a3a12, roughness: 0.6 }), 0, 0.2, -0.015, -0.12);
+      } else if (id === 'pumpkin') {
+        const sg = new THREE.SphereGeometry(0.16, 32, 20);
+        const p = sg.attributes.position;
+        for (let i = 0; i < p.count; i++) {
+          const v = new THREE.Vector3().fromBufferAttribute(p, i);
+          const k = 0.93 + 0.07 * Math.pow(Math.abs(Math.cos(Math.atan2(v.z, v.x) * 5)), 0.45);
+          p.setXYZ(i, v.x * k, v.y * 0.86, v.z * k);
+        }
+        sg.computeVertexNormals();
+        const face = tex((x, w, h) => {
+          x.fillStyle = '#000';
+          x.fillRect(0, 0, w, h);
+          x.fillStyle = '#fff';
+          const cx = w * 0.25;
+          for (const s of [-1, 1]) { x.beginPath(); x.moveTo(cx + s * 34, 92); x.lineTo(cx + s * 62, 122); x.lineTo(cx + s * 12, 122); x.fill(); }
+          x.beginPath(); x.moveTo(cx, 128); x.lineTo(cx + 10, 144); x.lineTo(cx - 10, 144); x.fill();
+          x.beginPath();
+          x.moveTo(cx - 70, 158);
+          for (let i = 0; i <= 8; i++) x.lineTo(cx - 70 + i * 17.5, i % 2 ? 170 : 160);
+          x.lineTo(cx + 70, 158); x.quadraticCurveTo(cx, 214, cx - 70, 158); x.fill();
+        });
+        const pm = new THREE.MeshStandardMaterial({ color: 0xa8460a, roughness: 0.55, emissive: new THREE.Color(3.2, 1.3, 0.25), emissiveMap: face });
+        add(sg, pm, 0, 0.04, 0.01);
+        add(new THREE.CylinderGeometry(0.018, 0.03, 0.08, 8), new THREE.MeshStandardMaterial({ color: 0x3a3320, roughness: 0.9 }), 0, 0.2, 0.0, 0.3);
+      } else if (id === 'plague') {
+        const lea = new THREE.MeshStandardMaterial({ color: 0x1d1813, roughness: 0.55 });
+        const blk = new THREE.MeshStandardMaterial({ color: 0x0f0f10, roughness: 0.85 });
+        add(new THREE.SphereGeometry(0.11, 24, 18), lea, 0, 0.02, 0.0).scale.set(1, 1.08, 1.05);
+        const beak = new THREE.ConeGeometry(0.05, 0.26, 18);
+        beak.rotateX(Math.PI / 2);
+        add(beak, lea, 0, -0.02, 0.21, 0.35);
+        for (const sx of [-1, 1]) {
+          add(new THREE.CircleGeometry(0.028, 20), this.mats.lens, sx * 0.045, 0.035, 0.103, 0, sx * 0.25, 0);
+          add(new THREE.TorusGeometry(0.031, 0.006, 6, 20), this.mats.brass, sx * 0.045, 0.035, 0.104, 0, sx * 0.25, 0);
+        }
+        add(new THREE.CylinderGeometry(0.3, 0.3, 0.014, 40), blk, 0, 0.14, -0.01, -0.08);
+        add(new THREE.CylinderGeometry(0.115, 0.125, 0.15, 28), blk, 0, 0.22, -0.02, -0.08);
+      } else if (id === 'bone') {
+        const skullTex = tex((x, w, h) => {
+          x.fillStyle = '#d8d0bc';
+          x.fillRect(0, 0, w, h);
+          x.fillStyle = '#120e0c';
+          const cx = w * 0.25;
+          for (const s of [-1, 1]) { x.beginPath(); x.ellipse(cx + s * 30, 118, 22, 18, 0, 0, Math.PI * 2); x.fill(); }
+          x.beginPath(); x.moveTo(cx, 138); x.lineTo(cx + 8, 156); x.lineTo(cx - 8, 156); x.fill();
+          for (let i = -3; i <= 3; i++) x.fillRect(cx + i * 9 - 1, 176, 2, 14);
+        });
+        const bone = new THREE.MeshStandardMaterial({ color: 0xffffff, map: skullTex, roughness: 0.7 });
+        add(new THREE.SphereGeometry(0.105, 28, 20), bone, 0, 0.03, 0.01).scale.set(0.95, 1.08, 1.05);
+        add(new THREE.BoxGeometry(0.11, 0.05, 0.08), new THREE.MeshStandardMaterial({ color: 0xd8d0bc, roughness: 0.7 }), 0, -0.07, 0.04);
+      }
+      head.add(g);
+      g.traverse((o) => { if (o.isMesh) { this.meshes.push(o); o.layers.enable(1); } });
+      this.costumeParts[id] = g;
+    }
+    this.costumeParts[id].visible = true;
   }
 
   setGhost(on) {
