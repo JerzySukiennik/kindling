@@ -67,7 +67,7 @@ class PointPool {
           vec4 mv = modelViewMatrix * vec4(position, 1.0);
           gl_PointSize = psize * uScale / max(0.1, -mv.z);
           gl_Position = projectionMatrix * mv;
-          vFog = exp(-pow(0.0165 * length(mv.xyz), 2.0));
+          vFog = exp(-pow(0.0125 * length(mv.xyz), 2.0));
         }
       `,
       fragmentShader: /* glsl */`

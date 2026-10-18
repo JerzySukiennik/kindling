@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { groundHeight, SPAWN_Z, BARRIER_Z, BARRIER_STOP_Z, PIT, BARRIER_HALF_W, FIELD } from '../world/layout.js';
 import { U } from '../world/globals.js';
-import { TYPES } from './monster.js';
+import { TYPES, THICK } from './monster.js';
 import { GRAVITY, JUMP_V } from './player.js';
 
 const CANDY_KEY = 'kindling.candy';
@@ -397,7 +397,7 @@ export class Game {
   }
 
   cutTime(r) {
-    return 0.05 + 15 * Math.pow(r, 1.55);
+    return 0.05 + 15 * Math.pow(r / THICK, 1.55);
   }
 
   rayGround(o, d, maxT, out) {
@@ -538,7 +538,7 @@ export class Game {
     for (const m of this.monsters.monsters) {
       if (k >= 15) break;
       if (!m.alive) continue;
-      arr[k++].set(m.pos.x, 0, m.pos.z, 0.7 + m.T.hipW * 4);
+      arr[k++].set(m.pos.x, 0, m.pos.z, 0.9 + m.T.hipW * 4);
     }
     while (k < 15) arr[k++].set(0, -1000, 0, 0);
     arr[15].set(this.player.pos.x, 0, this.player.pos.z, 0.7);

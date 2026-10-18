@@ -41,7 +41,7 @@ export class Bonfire {
           float sway = sin(uTime * 2.3 + aSeed * 20.0) * 0.12 * position.y * position.y;
           vec3 p = ip + right * (position.x * sx + sway * sx) + vec3(0.0, position.y * sy, 0.0);
           vec4 mv = viewMatrix * vec4(p, 1.0);
-          vFog = exp(-pow(0.0165 * length(mv.xyz), 2.0));
+          vFog = exp(-pow(0.0125 * length(mv.xyz), 2.0));
           gl_Position = projectionMatrix * mv;
         }
       `,
@@ -88,8 +88,8 @@ export class Bonfire {
       this.flameSpots.push({ x, z, y: groundHeight(x, z), w: 0.6 + this.rand() * 0.7, h: 0.8 + this.rand() * 0.9, order: Math.abs(x) / PIT.x1 + this.rand() * 0.25 });
     }
     this.flameSpots.sort((a, b) => a.order - b.order);
-    this.lights = [-7, 7].map((x) => {
-      const l = new THREE.PointLight(0xff7a2a, 0, 46, 1.6);
+    this.lights = [0].map((x) => {
+      const l = new THREE.PointLight(0xff7a2a, 0, 52, 1.5);
       l.position.set(x, groundHeight(x, 17) + 1.6, 17);
       scene.add(l);
       return l;
@@ -171,7 +171,7 @@ export class Bonfire {
     this.flames.count = count;
     this.flames.instanceMatrix.needsUpdate = true;
     const flick = 0.82 + 0.1 * Math.sin(t * 7.3) + 0.08 * Math.sin(t * 17.1 + 1.3);
-    for (const l of this.lights) l.intensity = (5 + L * 20) * flick;
+    for (const l of this.lights) l.intensity = (8 + L * 32) * flick;
     this.spot.intensity = (14 + L * 55) * flick;
     this.emberAcc += dt * (6 + L * 40);
     while (this.emberAcc > 1) {

@@ -38,6 +38,14 @@ function setLoad(p, text) {
 
 async function boot() {
   const R = new Renderer($('view'));
+  R.renderer.domElement.addEventListener('webglcontextlost', () => {
+    $('gl-lost').classList.remove('hidden');
+    setTimeout(() => { if (R.renderer.getContext().isContextLost()) location.reload(); }, 3500);
+  });
+  R.renderer.domElement.addEventListener('webglcontextrestored', () => {
+    $('gl-lost').classList.add('hidden');
+    R.rebuild();
+  });
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.08, 1000);
   camera.position.set(0, 2.2, 10);
@@ -57,6 +65,9 @@ async function boot() {
   const cem = await createCemetery(scene, assets);
   createTrees(scene, assets, TREES);
   const props = createProps(scene, assets);
+  scene.traverse((o) => {
+    if (o.material && o.material.transmission > 0) { o.material.transmission = 0; o.material.needsUpdate = true; }
+  });
   for (const c of [...scatter.colliders, ...cem.colliders]) {
     if (Math.abs(c.x) < 24 && c.z > -64 && c.z < 24) physics.addStatic(c);
   }
@@ -76,7 +87,7 @@ async function boot() {
   const game = new Game({ scene, camera, renderer: R, sticks, debris, monsters, barrier, bonfire, player, laserFX, particles, audio, hud, physics });
 
   const applyPreset = (name) => {
-    const real = name === 'auto' ? (applyPreset.auto || 'high') : name;
+    const real = name === 'auto' ? (applyPreset.auto || 'medium') : name;
     R.setPreset(real);
     const p = PRESETS[real];
     scatter.setDensity(p.density);
@@ -102,7 +113,14 @@ async function boot() {
     }
   };
   menuMonsters();
+  const hidden = [];
+  scene.traverse((o) => { if (!o.visible) { hidden.push(o); o.visible = true; } });
+  const ghostProbe = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.01, 0.01), player.char.ghostMat);
+  ghostProbe.position.set(0, -50, 0);
+  scene.add(ghostProbe);
   try { await R.renderer.compileAsync(scene, camera); } catch (e) { R.renderer.compile(scene, camera); }
+  scene.remove(ghostProbe);
+  for (const o of hidden) o.visible = false;
   R.render(0);
 
   const menuTick = (dt, t) => {
@@ -243,7 +261,7 @@ async function boot() {
       const fps = this.frames / (this.t - 2);
       this.done = true;
       const order = ['ultra', 'high', 'medium', 'low'];
-      let cur = order.indexOf(applyPreset.auto || 'high');
+      let cur = order.indexOf(applyPreset.auto || 'medium');
       if (fps < 50 && cur < order.length - 1) cur++;
       if (fps < 34 && cur < order.length - 1) cur++;
       applyPreset.auto = order[cur];
@@ -277,6 +295,7 @@ async function boot() {
       audio.setListener(camera);
       audio.updateAmbience(dt, bonfire.shown, camera.position.distanceTo(firePos));
     }
+    if (camera.fov !== tick.lastFov) { tick.lastFov = camera.fov; particles.setScale(R.renderer.domElement.height, camera.fov); }
     R.shake.set(0, 0);
     if (!skipRender) R.render(U.time.value);
     input.endFrame();

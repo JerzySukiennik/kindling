@@ -35,6 +35,7 @@ export class Assets {
             o.geometry.computeBoundingBox();
             o.geometry.computeBoundingSphere();
             const m = o.material;
+            if (m.transmission > 0) { m.transmission = 0; m.thickness = 0; m.transmissionMap = null; m.needsUpdate = true; }
             if (m.map) m.map.anisotropy = Math.min(8, this.maxAniso);
             if (m.normalMap) m.normalMap.anisotropy = Math.min(8, this.maxAniso);
             parts.push({ name: o.name, geometry: o.geometry, material: m });

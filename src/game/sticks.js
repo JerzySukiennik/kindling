@@ -23,7 +23,7 @@ function stickGeometry() {
     for (let k = 0; k < RADIAL; k++) {
       const a = i * (RADIAL + 1) + k;
       const b = a + RADIAL + 1;
-      idx.push(a, a + 1, b, a + 1, b + 1, b);
+      idx.push(a, b, a + 1, a + 1, b, b + 1);
     }
   }
   for (const cap of [-1, 1]) {
@@ -130,7 +130,7 @@ export class Sticks {
     this.uniforms = { uNow: { value: 0 } };
     const mat = new THREE.MeshStandardMaterial({
       map: bark.diff, normalMap: bark.nor, roughnessMap: bark.arm, aoMap: bark.arm,
-      roughness: 1, metalness: 0, color: new THREE.Color(0.47, 0.4, 0.34),
+      roughness: 1, metalness: 0, color: new THREE.Color(0.58, 0.5, 0.43),
       normalScale: new THREE.Vector2(1.3, 1.3),
     });
     const uniforms = this.uniforms;
@@ -236,6 +236,10 @@ export class Sticks {
         `)
         .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
           totalEmissiveRadiance += stickEmissive;
+          {
+            float rim = pow(1.0 - clamp(dot(normalize(vNormal), normalize(vViewPosition)), 0.0, 1.0), 2.0);
+            totalEmissiveRadiance += vec3(0.24, 0.27, 0.35) * rim * (1.0 - stickChar * 0.8);
+          }
         `)
         .replace('#include <normal_fragment_maps>', `
           if (abs(vSt.z) < 0.5) {

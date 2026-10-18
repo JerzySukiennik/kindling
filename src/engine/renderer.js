@@ -5,10 +5,10 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
 export const PRESETS = {
-  low: { name: 'low', pr: 0.75, shadow: 1024, msaa: 0, bloom: true, density: 0.45, fireShadow: false },
-  medium: { name: 'medium', pr: 1.0, shadow: 2048, msaa: 2, bloom: true, density: 0.7, fireShadow: false },
-  high: { name: 'high', pr: 1.0, shadow: 2048, msaa: 4, bloom: true, density: 1.0, fireShadow: true },
-  ultra: { name: 'ultra', pr: 1.5, shadow: 4096, msaa: 4, bloom: true, density: 1.0, fireShadow: true },
+  low: { name: 'low', pr: 0.7, shadow: 1024, msaa: 0, bloom: true, density: 0.4, fireShadow: false },
+  medium: { name: 'medium', pr: 0.85, shadow: 2048, msaa: 2, bloom: true, density: 0.6, fireShadow: false },
+  high: { name: 'high', pr: 1.0, shadow: 2048, msaa: 2, bloom: true, density: 0.8, fireShadow: false },
+  ultra: { name: 'ultra', pr: 1.25, shadow: 4096, msaa: 4, bloom: true, density: 1.0, fireShadow: true },
 };
 
 const SanitizeShader = {

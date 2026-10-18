@@ -99,7 +99,7 @@ export function createSky(scene, renderer, assets) {
   pmrem.dispose();
   scene.environment = env;
   scene.environmentIntensity = 0.32;
-  scene.fog = new THREE.FogExp2(FOG_COLOR.clone(), 0.0165);
+  scene.fog = new THREE.FogExp2(FOG_COLOR.clone(), 0.0125);
   scene.background = FOG_COLOR.clone();
 
   const hemi = new THREE.HemisphereLight(0x5a6c8c, 0x16120e, 0.42);

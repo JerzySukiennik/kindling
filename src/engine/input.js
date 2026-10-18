@@ -6,6 +6,7 @@ export class Input {
     this.mouseDX = 0;
     this.mouseDY = 0;
     this.fire = false;
+    this.aim = false;
     this.locked = false;
     this.enabled = false;
     this.sensitivity = 1;
@@ -17,7 +18,7 @@ export class Input {
       if (e.code === 'Space' || e.code === 'Tab') e.preventDefault();
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
-    window.addEventListener('blur', () => { this.keys.clear(); this.fire = false; });
+    window.addEventListener('blur', () => { this.keys.clear(); this.fire = false; this.aim = false; });
     window.addEventListener('mousemove', (e) => {
       if (!this.locked) return;
       this.mouseDX += e.movementX || 0;
@@ -27,12 +28,13 @@ export class Input {
       if (!this.enabled) return;
       if (!this.locked) { this.lock(); return; }
       if (e.button === 0) this.fire = true;
+      if (e.button === 2) this.aim = true;
     });
-    window.addEventListener('mouseup', (e) => { if (e.button === 0) this.fire = false; });
+    window.addEventListener('mouseup', (e) => { if (e.button === 0) this.fire = false; if (e.button === 2) this.aim = false; });
     window.addEventListener('contextmenu', (e) => { if (this.enabled) e.preventDefault(); });
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === this.target;
-      if (!this.locked) this.fire = false;
+      if (!this.locked) { this.fire = false; this.aim = false; }
       this.onLockChange(this.locked);
     });
   }

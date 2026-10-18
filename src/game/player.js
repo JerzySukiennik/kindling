@@ -25,6 +25,7 @@ export class Player {
     this.obstacles = [...obstacles, ...LAMPS.map((l) => ({ x: l.x, z: l.z, r: 0.35 }))];
     this.shake = 0;
     this.fovKick = 0;
+    this.aimAmt = 0;
     this.stepAcc = 0;
     this.onStep = () => {};
     this.onJump = () => {};
@@ -50,9 +51,11 @@ export class Player {
   }
 
   update(dt, input, mouse, allowControl) {
+    this.aimAmt += (((allowControl && input.aim && !this.ghost) ? 1 : 0) - this.aimAmt) * Math.min(1, dt * 12);
     if (allowControl) {
-      this.yaw -= mouse.dx * 0.0022;
-      this.pitch = THREE.MathUtils.clamp(this.pitch - mouse.dy * 0.0022, -0.55, 0.75);
+      const sens = 0.0022 * (1 - this.aimAmt * 0.55);
+      this.yaw -= mouse.dx * sens;
+      this.pitch = THREE.MathUtils.clamp(this.pitch - mouse.dy * sens, -0.55, 0.75);
     }
     const fwd = this._fwd.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
     const right = this._right.set(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
@@ -65,8 +68,8 @@ export class Player {
     }
     const moving = wish.lengthSq() > 0;
     if (moving) wish.normalize();
-    const sprint = allowControl && input.down('ShiftLeft') && moving && input.down('KeyW');
-    const maxSpeed = this.ghost ? 5 : sprint ? 6.6 : 4.3;
+    const sprint = allowControl && input.down('ShiftLeft') && moving && input.down('KeyW') && this.aimAmt < 0.3;
+    const maxSpeed = this.ghost ? 5 : sprint ? 6.6 : 4.3 - this.aimAmt * 1.6;
     const accel = this.onGround ? 14 : 4;
     const tx = wish.x * maxSpeed;
     const tz = wish.z * maxSpeed;
@@ -133,8 +136,8 @@ export class Player {
     this.camDir.set(-Math.sin(this.yaw) * cp, Math.sin(this.pitch), -Math.cos(this.yaw) * cp).normalize();
     const pivot = this._v.copy(this.pos).add(new THREE.Vector3(0, 1.62, 0));
     const right = this._right;
-    const back = 3.5 - this.fovKick * 0.3;
-    this.camPos.copy(pivot).addScaledVector(this.camDir, -back).addScaledVector(right, 0.95).add(new THREE.Vector3(0, 0.18, 0));
+    const back = 3.5 - this.fovKick * 0.3 - this.aimAmt * 1.7;
+    this.camPos.copy(pivot).addScaledVector(this.camDir, -back).addScaledVector(right, 0.95 - this.aimAmt * 0.25).add(new THREE.Vector3(0, 0.18 - this.aimAmt * 0.08, 0));
     const gy = groundHeight(this.camPos.x, this.camPos.z) + 0.35;
     if (this.camPos.y < gy) this.camPos.y = gy;
     this.shake = Math.max(0, this.shake - dt * 1.8);
@@ -142,7 +145,7 @@ export class Player {
     const t = performance.now() * 0.001;
     cam.position.copy(this.camPos).add(new THREE.Vector3(Math.sin(t * 37) * sh * 0.06, Math.sin(t * 43 + 1) * sh * 0.05, 0));
     cam.lookAt(this.camPos.x + this.camDir.x, this.camPos.y + this.camDir.y, this.camPos.z + this.camDir.z);
-    const fov = 62 + this.fovKick * 6;
+    const fov = 58 + this.fovKick * 6 - this.aimAmt * 27;
     if (Math.abs(cam.fov - fov) > 0.01) { cam.fov = fov; cam.updateProjectionMatrix(); }
   }
 }

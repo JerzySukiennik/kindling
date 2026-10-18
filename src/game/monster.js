@@ -9,6 +9,19 @@ export const TYPES = {
   stilt: { hip: 1.72, thigh: 0.92, shin: 0.92, spine: 0.6, neck: 0.24, head: 0.15, shoulder: 0.2, hipW: 0.11, uarm: 0.64, farm: 0.62, rLimb: 0.028, rTorso: 0.042, speed: 2.0, stride: 1.4, bundle: 0, ribs: 2, spikes: 3, candy: 11, reach: 1.5, reverseKnee: true },
 };
 
+export const SIZE = 1.75;
+export const THICK = 2.0;
+const LEN_KEYS = ['hip', 'thigh', 'shin', 'spine', 'neck', 'head', 'shoulder', 'hipW', 'uarm', 'farm', 'stride', 'reach'];
+
+function scaled(T) {
+  const o = { ...T };
+  for (const k of LEN_KEYS) o[k] = T[k] * SIZE;
+  o.rLimb = T.rLimb * THICK;
+  o.rTorso = T.rTorso * THICK;
+  o.speed = T.speed * 1.22;
+  return o;
+}
+
 const UP = new THREE.Vector3(0, 1, 0);
 const T1 = new THREE.Vector3();
 const T2 = new THREE.Vector3();
@@ -62,7 +75,7 @@ export class Monster {
     this.mgr = mgr;
     this.id = NEXT_ID++;
     this.type = typeName;
-    this.T = TYPES[typeName];
+    this.T = scaled(TYPES[typeName]);
     this.rand = mulberry32(seed);
     this.seed = seed;
     this.pos = new THREE.Vector3(x, groundHeight(x, z), z);
@@ -125,7 +138,7 @@ export class Monster {
     for (let k = 0; k < T.spikes; k++) {
       const y = T.spine * (0.5 + R() * 0.5);
       const sx = (R() - 0.5) * T.shoulder * 1.6;
-      const len = 0.18 + R() * 0.35 * (T.head * 5);
+      const len = (0.18 + R() * 0.35) * SIZE * (T.head / SIZE * 5);
       const dir = new THREE.Vector3((R() - 0.5) * 0.8, 0.5 + R() * 0.7, -0.6 - R() * 0.5).normalize();
       const a = new THREE.Vector3(sx, y, -rt);
       this.seg({ key: 'spike' + k, group: 'torso', kind: 'decor', frame: 'body', la: a, lb: a.clone().addScaledVector(dir, len), r: rl * (0.45 + R() * 0.3), taper: 0.3, endA: 0, endB: 1 });
@@ -151,7 +164,7 @@ export class Monster {
       const toes = [];
       for (let k = 0; k < 2; k++) {
         const ang = (k - 0.5) * 0.7;
-        toes.push(this.seg({ key: 'toe' + s + k, group: 'leg' + s, kind: 'decor', frame: 'foot' + s, la: new THREE.Vector3(0, 0.02, -0.03), lb: new THREE.Vector3(Math.sin(ang) * 0.17, 0.0, Math.cos(ang) * 0.17).multiplyScalar(1 + T.rLimb * 6), r: rl * 0.55, taper: 0.35, endA: 0, endB: 1 }));
+        toes.push(this.seg({ key: 'toe' + s + k, group: 'leg' + s, kind: 'decor', frame: 'foot' + s, la: new THREE.Vector3(0, 0.02, -0.03).multiplyScalar(SIZE), lb: new THREE.Vector3(Math.sin(ang) * 0.17, 0.0, Math.cos(ang) * 0.17).multiplyScalar(SIZE * (1 + T.rLimb * 3)), r: rl * 0.55, taper: 0.35, endA: 0, endB: 1 }));
       }
       const shin = this.seg({ key: 'shin' + s, group: 'leg' + s, a: 'knee' + s, b: 'foot' + s, r: rl * 0.9, taper: 0.7, endB: 0, down: toes });
       this.seg({ key: 'thigh' + s, group: 'leg' + s, a: 'hip' + s, b: 'knee' + s, r: rl * 1.1, taper: 0.85, down: [shin, ...toes] });
@@ -161,7 +174,7 @@ export class Monster {
       const fingers = [];
       for (let k = 0; k < 3; k++) {
         const ang = (k - 1) * 0.35;
-        fingers.push(this.seg({ key: 'finger' + s + k, group: 'arm' + s, kind: 'decor', frame: 'hand' + s, la: new THREE.Vector3(0, -0.01, 0), lb: new THREE.Vector3(Math.sin(ang) * 0.06, 0.13 + R() * 0.06, Math.cos(ang) * 0.04).multiplyScalar(1 + T.rLimb * 8), r: rl * 0.45, taper: 0.3, endA: 0, endB: 1 }));
+        fingers.push(this.seg({ key: 'finger' + s + k, group: 'arm' + s, kind: 'decor', frame: 'hand' + s, la: new THREE.Vector3(0, -0.01, 0), lb: new THREE.Vector3(Math.sin(ang) * 0.06, 0.13 + R() * 0.06, Math.cos(ang) * 0.04).multiplyScalar(SIZE * (1 + T.rLimb * 4)), r: rl * 0.45, taper: 0.3, endA: 0, endB: 1 }));
       }
       const farm = this.seg({ key: 'farm' + s, group: 'arm' + s, a: 'elb' + s, b: 'hand' + s, r: rl * 0.8, taper: 0.7, down: fingers });
       this.seg({ key: 'uarm' + s, group: 'arm' + s, a: 'sh' + s, b: 'elb' + s, r: rl * 0.95, taper: 0.85, down: [farm, ...fingers] });
@@ -258,7 +271,7 @@ export class Monster {
       }
       if (this.attackT > 1.1) { this.state = 'walk'; this.attackDone = false; this.cooldown = 0.6; }
     }
-    if (target && dist < 0.75) desired = 0;
+    if (target && dist < 0.5 + this.T.hipW * 2) desired = 0;
     const dx = goal.x - this.pos.x;
     const dz = goal.z - this.pos.z;
     const wantH = Math.atan2(dx, dz);
@@ -288,10 +301,11 @@ export class Monster {
       const ox = this.pos.x - p.pos.x;
       const oz = this.pos.z - p.pos.z;
       const d2 = ox * ox + oz * oz;
-      if (d2 < 0.5 && d2 > 1e-6) {
+      const pr = 0.45 + this.T.hipW * 1.5;
+      if (d2 < pr * pr && d2 > 1e-6) {
         const d = Math.sqrt(d2);
-        this.pos.x += (ox / d) * (0.71 - d) * 0.5;
-        this.pos.z += (oz / d) * (0.71 - d) * 0.5;
+        this.pos.x += (ox / d) * (pr - d) * 0.5;
+        this.pos.z += (oz / d) * (pr - d) * 0.5;
       }
     }
     this.pos.x = THREE.MathUtils.clamp(this.pos.x, FIELD.x0 + 0.6, FIELD.x1 - 0.6);

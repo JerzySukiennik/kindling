@@ -43,11 +43,13 @@ export function createProps(scene, assets) {
     const bulb = new THREE.Mesh(bulbGeo, bulbMat);
     bulb.position.copy(head);
     lamp.add(bulb);
-    const light = new THREE.PointLight(0xffa860, 9, 20, 2);
-    light.position.copy(head);
-    lamp.add(light);
-    out.lights.push(light);
-    out.flickers.push({ light, base: 9, seed: rand() * 100 });
+    if (l.z < 5) {
+      const light = new THREE.PointLight(0xffa860, 11, 22, 2);
+      light.position.copy(head);
+      lamp.add(light);
+      out.lights.push(light);
+      out.flickers.push({ light, base: 11, seed: rand() * 100 });
+    }
   }
 
   const candleGeo = new THREE.CylinderGeometry(1, 1, 1, 10, 1);

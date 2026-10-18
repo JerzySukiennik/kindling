@@ -105,8 +105,7 @@ export class LaserFX {
     this.impact = mk(new THREE.Color(6, 3, 1), 0.5);
     this.light = new THREE.PointLight(0x9cff6a, 0, 7, 2);
     scene.add(this.light);
-    this.muzzleLight = new THREE.PointLight(0x9cff6a, 0, 3.5, 2);
-    scene.add(this.muzzleLight);
+
     this.power = 0;
   }
 
@@ -130,8 +129,7 @@ export class LaserFX {
     this.light.position.copy(end).addScaledVector(this._dir(start, end), -0.25);
     this.light.color.setRGB(burning ? 1 : 0.6, burning ? 0.55 : 1, burning ? 0.2 : 0.4);
     this.light.intensity = p * (burning ? 9 : 4) * (0.85 + Math.random() * 0.3);
-    this.muzzleLight.position.copy(start);
-    this.muzzleLight.intensity = p * 2.2;
+
   }
 
   _dir(a, b) {
