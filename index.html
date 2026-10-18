@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kindling</title>
+<meta name="description" content="Cut the stick monsters with your laser before they reach you, then jump the wave of wood that burns behind you.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Barlow+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="src/ui/hud.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Cpath d=%22M12 1.5c1.2 0 2.2 2 3.6 6.3 1.3 4.1 2.6 8.7 2.8 10.8.2 2.3-2.9 3.9-6.4 3.9s-6.6-1.6-6.4-3.9c.2-2.1 1.5-6.7 2.8-10.8C9.8 3.5 10.8 1.5 12 1.5z%22 fill=%22%23ff8a1f%22/%3E%3C/svg%3E">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+    "rapier": "https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.19.3/rapier.mjs"
+  }
+}
+</script>
+</head>
+<body>
+<div id="view"></div>
+
+<div id="loading" class="screen">
+  <div class="title">Kindling</div>
+  <div class="bar"><i id="load-bar"></i></div>
+  <div id="load-text" class="sub">Gathering sticks</div>
+</div>
+
+<div id="menu" class="screen hidden">
+  <div class="title">Kindling</div>
+  <div class="tag">They are made of sticks. Sticks burn.</div>
+  <div class="menu-buttons">
+    <button id="btn-play" class="btn primary">Play</button>
+    <button id="btn-settings" class="btn">Settings</button>
+  </div>
+  <div class="menu-foot">
+    <span class="candy-wallet"><svg class="cc"><use href="#candy"/></svg><b id="menu-candy">0</b></span>
+    <span id="menu-best"></span>
+  </div>
+  <div class="controls-hint">WASD move · Mouse aim · Hold LMB laser · Space jump · Shift sprint · Esc pause</div>
+</div>
+
+<div id="settings" class="screen panel hidden">
+  <div class="panel-title">Settings</div>
+  <label class="row"><span>Graphics</span>
+    <select id="set-quality">
+      <option value="auto">Auto</option>
+      <option value="low">Low</option>
+      <option value="medium">Medium</option>
+      <option value="high">High</option>
+      <option value="ultra">Ultra</option>
+    </select>
+  </label>
+  <label class="row"><span>Music volume</span><input id="set-music" type="range" min="0" max="1" step="0.01"></label>
+  <label class="row"><span>Effects volume</span><input id="set-sfx" type="range" min="0" max="1" step="0.01"></label>
+  <label class="row"><span>Mouse sensitivity</span><input id="set-sens" type="range" min="0.2" max="2.5" step="0.05"></label>
+  <div class="row"><span>Music track</span>
+    <div class="row-right">
+      <span id="music-name" class="dim">None</span>
+      <button id="btn-music" class="btn small">Load file</button>
+      <button id="btn-music-clear" class="btn small ghost">Reset</button>
+      <input id="music-file" type="file" accept="audio/*" hidden>
+    </div>
+  </div>
+  <button id="btn-settings-back" class="btn">Back</button>
+</div>
+
+<div id="pause" class="screen hidden">
+  <div class="title small">Paused</div>
+  <div class="menu-buttons">
+    <button id="btn-resume" class="btn primary">Resume</button>
+    <button id="btn-pause-settings" class="btn">Settings</button>
+    <button id="btn-quit" class="btn ghost">Quit to menu</button>
+  </div>
+</div>
+
+<div id="gameover" class="screen hidden">
+  <div class="title small">The fire went out</div>
+  <div class="stats">
+    <div><b id="go-round">0</b><span>rounds survived</span></div>
+    <div><b id="go-sticks">0</b><span>sticks burned</span></div>
+    <div><b id="go-candy">0</b><span>candy corn earned</span></div>
+  </div>
+  <div class="menu-buttons">
+    <button id="btn-again" class="btn primary">Play again</button>
+    <button id="btn-go-menu" class="btn ghost">Menu</button>
+  </div>
+</div>
+
+<div id="hud" class="hidden">
+  <div id="hud-top">
+    <div id="hud-round">Round 1</div>
+    <div id="hud-status"></div>
+  </div>
+  <div id="crosshair">
+    <svg viewBox="-50 -50 100 100">
+      <circle class="heat-bg" r="22"/>
+      <circle id="heat-arc" class="heat" r="22"/>
+      <circle class="dot" r="1.6"/>
+    </svg>
+  </div>
+  <div id="hud-candy"><svg class="cc"><use href="#candy"/></svg><b id="candy-count">0</b></div>
+  <div id="hud-msg"></div>
+  <div id="hud-sub"></div>
+  <div id="hud-ghost" class="hidden">You were taken. Back next round.</div>
+  <div id="hud-click" class="hidden">Click to play</div>
+  <div id="popups"></div>
+  <div id="hud-debug" class="hidden"></div>
+</div>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="ccg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff6e6"/>
+      <stop offset="0.33" stop-color="#fff6e6"/>
+      <stop offset="0.34" stop-color="#ff8a1f"/>
+      <stop offset="0.66" stop-color="#ff8a1f"/>
+      <stop offset="0.67" stop-color="#ffd23a"/>
+      <stop offset="1" stop-color="#ffd23a"/>
+    </linearGradient>
+    <symbol id="candy" viewBox="0 0 24 24">
+      <path d="M12 1.5c1.2 0 2.2 2 3.6 6.3 1.3 4.1 2.6 8.7 2.8 10.8.2 2.3-2.9 3.9-6.4 3.9s-6.6-1.6-6.4-3.9c.2-2.1 1.5-6.7 2.8-10.8C9.8 3.5 10.8 1.5 12 1.5z" fill="url(#ccg)"/>
+    </symbol>
+  </defs>
+</svg>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,956 @@
+{
+ "rocks_grey": {
+  "source": "rock_moss_set_02",
+  "src_tris": 57647,
+  "parts": [
+   {
+    "name": "rocks_grey_0",
+    "tris": 1799,
+    "size": [
+     1.629,
+     1.013,
+     0.555
+    ]
+   },
+   {
+    "name": "rocks_grey_1",
+    "tris": 1799,
+    "size": [
+     1.202,
+     0.975,
+     0.485
+    ]
+   },
+   {
+    "name": "rocks_grey_2",
+    "tris": 1799,
+    "size": [
+     1.559,
+     1.2,
+     0.714
+    ]
+   },
+   {
+    "name": "rocks_grey_3",
+    "tris": 1800,
+    "size": [
+     2.191,
+     1.552,
+     0.547
+    ]
+   },
+   {
+    "name": "rocks_grey_4",
+    "tris": 1800,
+    "size": [
+     2.204,
+     1.552,
+     0.642
+    ]
+   },
+   {
+    "name": "rocks_grey_5",
+    "tris": 1799,
+    "size": [
+     1.205,
+     0.98,
+     0.401
+    ]
+   },
+   {
+    "name": "rocks_grey_6",
+    "tris": 1799,
+    "size": [
+     1.624,
+     0.959,
+     0.55
+    ]
+   },
+   {
+    "name": "rocks_grey_7",
+    "tris": 1800,
+    "size": [
+     1.742,
+     1.46,
+     0.954
+    ]
+   },
+   {
+    "name": "rocks_grey_8",
+    "tris": 1800,
+    "size": [
+     1.678,
+     1.127,
+     0.878
+    ]
+   },
+   {
+    "name": "rocks_grey_9",
+    "tris": 1799,
+    "size": [
+     0.473,
+     1.037,
+     0.72
+    ]
+   },
+   {
+    "name": "rocks_grey_10",
+    "tris": 1800,
+    "size": [
+     1.2,
+     0.874,
+     0.727
+    ]
+   },
+   {
+    "name": "rocks_grey_11",
+    "tris": 1800,
+    "size": [
+     1.617,
+     1.389,
+     0.614
+    ]
+   },
+   {
+    "name": "rocks_grey_12",
+    "tris": 1799,
+    "size": [
+     1.508,
+     1.027,
+     1.082
+    ]
+   },
+   {
+    "name": "rocks_grey_13",
+    "tris": 1800,
+    "size": [
+     1.113,
+     1.047,
+     0.68
+    ]
+   },
+   {
+    "name": "rocks_grey_14",
+    "tris": 1800,
+    "size": [
+     1.433,
+     1.086,
+     1.023
+    ]
+   },
+   {
+    "name": "rocks_grey_15",
+    "tris": 1722,
+    "size": [
+     1.22,
+     1.106,
+     0.844
+    ]
+   },
+   {
+    "name": "rocks_grey_16",
+    "tris": 1511,
+    "size": [
+     0.688,
+     1.329,
+     0.995
+    ]
+   },
+   {
+    "name": "rocks_grey_17",
+    "tris": 1460,
+    "size": [
+     0.768,
+     1.309,
+     0.914
+    ]
+   },
+   {
+    "name": "rocks_grey_18",
+    "tris": 1354,
+    "size": [
+     0.447,
+     1.16,
+     0.616
+    ]
+   },
+   {
+    "name": "rocks_grey_19",
+    "tris": 1349,
+    "size": [
+     1.074,
+     0.885,
+     0.555
+    ]
+   },
+   {
+    "name": "rocks_grey_20",
+    "tris": 1221,
+    "size": [
+     0.906,
+     0.748,
+     0.634
+    ]
+   },
+   {
+    "name": "rocks_grey_21",
+    "tris": 1156,
+    "size": [
+     0.559,
+     0.842,
+     0.528
+    ]
+   },
+   {
+    "name": "rocks_grey_22",
+    "tris": 871,
+    "size": [
+     0.669,
+     0.6,
+     0.577
+    ]
+   },
+   {
+    "name": "rocks_grey_23",
+    "tris": 817,
+    "size": [
+     0.422,
+     0.737,
+     0.672
+    ]
+   }
+  ]
+ },
+ "rocks_tan": {
+  "source": "rock_moss_set_01",
+  "src_tris": 63127,
+  "parts": [
+   {
+    "name": "rocks_tan_0",
+    "tris": 1799,
+    "size": [
+     1.785,
+     2.924,
+     1.062
+    ]
+   },
+   {
+    "name": "rocks_tan_1",
+    "tris": 1800,
+    "size": [
+     1.771,
+     2.997,
+     0.776
+    ]
+   },
+   {
+    "name": "rocks_tan_2",
+    "tris": 1800,
+    "size": [
+     2.027,
+     2.235,
+     1.179
+    ]
+   },
+   {
+    "name": "rocks_tan_3",
+    "tris": 1798,
+    "size": [
+     1.064,
+     2.097,
+     1.104
+    ]
+   },
+   {
+    "name": "rocks_tan_4",
+    "tris": 1800,
+    "size": [
+     1.879,
+     1.608,
+     1.032
+    ]
+   },
+   {
+    "name": "rocks_tan_5",
+    "tris": 1800,
+    "size": [
+     1.857,
+     1.937,
+     0.931
+    ]
+   },
+   {
+    "name": "rocks_tan_6",
+    "tris": 1800,
+    "size": [
+     1.381,
+     1.246,
+     1.08
+    ]
+   },
+   {
+    "name": "rocks_tan_7",
+    "tris": 1799,
+    "size": [
+     1.879,
+     2.621,
+     0.892
+    ]
+   },
+   {
+    "name": "rocks_tan_8",
+    "tris": 1799,
+    "size": [
+     0.744,
+     1.482,
+     1.442
+    ]
+   },
+   {
+    "name": "rocks_tan_9",
+    "tris": 1800,
+    "size": [
+     1.167,
+     1.795,
+     1.026
+    ]
+   },
+   {
+    "name": "rocks_tan_10",
+    "tris": 1649,
+    "size": [
+     1.45,
+     1.417,
+     0.869
+    ]
+   },
+   {
+    "name": "rocks_tan_11",
+    "tris": 1578,
+    "size": [
+     1.017,
+     1.064,
+     1.081
+    ]
+   },
+   {
+    "name": "rocks_tan_12",
+    "tris": 1438,
+    "size": [
+     1.123,
+     1.735,
+     1.095
+    ]
+   },
+   {
+    "name": "rocks_tan_13",
+    "tris": 1381,
+    "size": [
+     1.178,
+     1.085,
+     1.11
+    ]
+   },
+   {
+    "name": "rocks_tan_14",
+    "tris": 1399,
+    "size": [
+     1.353,
+     2.016,
+     0.986
+    ]
+   },
+   {
+    "name": "rocks_tan_15",
+    "tris": 1367,
+    "size": [
+     1.251,
+     1.504,
+     1.033
+    ]
+   },
+   {
+    "name": "rocks_tan_16",
+    "tris": 1275,
+    "size": [
+     1.446,
+     1.162,
+     1.048
+    ]
+   },
+   {
+    "name": "rocks_tan_17",
+    "tris": 1189,
+    "size": [
+     1.174,
+     1.823,
+     0.82
+    ]
+   },
+   {
+    "name": "rocks_tan_18",
+    "tris": 1131,
+    "size": [
+     1.522,
+     1.575,
+     1.062
+    ]
+   },
+   {
+    "name": "rocks_tan_19",
+    "tris": 1102,
+    "size": [
+     1.153,
+     0.656,
+     1.053
+    ]
+   },
+   {
+    "name": "rocks_tan_20",
+    "tris": 1079,
+    "size": [
+     0.905,
+     1.551,
+     0.918
+    ]
+   },
+   {
+    "name": "rocks_tan_21",
+    "tris": 1053,
+    "size": [
+     0.515,
+     1.618,
+     1.121
+    ]
+   },
+   {
+    "name": "rocks_tan_22",
+    "tris": 916,
+    "size": [
+     1.143,
+     1.458,
+     1.021
+    ]
+   },
+   {
+    "name": "rocks_tan_23",
+    "tris": 907,
+    "size": [
+     1.139,
+     0.858,
+     0.524
+    ]
+   },
+   {
+    "name": "rocks_tan_24",
+    "tris": 925,
+    "size": [
+     0.693,
+     0.876,
+     1.013
+    ]
+   },
+   {
+    "name": "rocks_tan_25",
+    "tris": 866,
+    "size": [
+     1.8,
+     1.413,
+     0.411
+    ]
+   },
+   {
+    "name": "rocks_tan_26",
+    "tris": 838,
+    "size": [
+     1.477,
+     1.042,
+     0.784
+    ]
+   },
+   {
+    "name": "rocks_tan_27",
+    "tris": 863,
+    "size": [
+     0.917,
+     0.941,
+     0.971
+    ]
+   },
+   {
+    "name": "rocks_tan_28",
+    "tris": 775,
+    "size": [
+     0.801,
+     1.177,
+     0.816
+    ]
+   },
+   {
+    "name": "rocks_tan_29",
+    "tris": 796,
+    "size": [
+     1.037,
+     0.844,
+     0.997
+    ]
+   },
+   {
+    "name": "rocks_tan_30",
+    "tris": 737,
+    "size": [
+     0.648,
+     1.581,
+     0.672
+    ]
+   },
+   {
+    "name": "rocks_tan_31",
+    "tris": 715,
+    "size": [
+     1.261,
+     1.072,
+     0.307
+    ]
+   }
+  ]
+ },
+ "pebbles": {
+  "source": "namaqualand_stones_01",
+  "src_tris": 70124,
+  "parts": [
+   {
+    "name": "pebbles_0",
+    "tris": 160,
+    "size": [
+     0.073,
+     0.062,
+     0.035
+    ]
+   },
+   {
+    "name": "pebbles_1",
+    "tris": 160,
+    "size": [
+     0.076,
+     0.063,
+     0.021
+    ]
+   },
+   {
+    "name": "pebbles_2",
+    "tris": 160,
+    "size": [
+     0.097,
+     0.098,
+     0.016
+    ]
+   },
+   {
+    "name": "pebbles_3",
+    "tris": 160,
+    "size": [
+     0.094,
+     0.075,
+     0.047
+    ]
+   },
+   {
+    "name": "pebbles_4",
+    "tris": 160,
+    "size": [
+     0.092,
+     0.072,
+     0.051
+    ]
+   },
+   {
+    "name": "pebbles_5",
+    "tris": 160,
+    "size": [
+     0.023,
+     0.092,
+     0.051
+    ]
+   },
+   {
+    "name": "pebbles_6",
+    "tris": 160,
+    "size": [
+     0.03,
+     0.041,
+     0.032
+    ]
+   },
+   {
+    "name": "pebbles_7",
+    "tris": 159,
+    "size": [
+     0.149,
+     0.079,
+     0.07
+    ]
+   },
+   {
+    "name": "pebbles_8",
+    "tris": 159,
+    "size": [
+     0.112,
+     0.088,
+     0.076
+    ]
+   },
+   {
+    "name": "pebbles_9",
+    "tris": 159,
+    "size": [
+     0.113,
+     0.081,
+     0.037
+    ]
+   },
+   {
+    "name": "pebbles_10",
+    "tris": 160,
+    "size": [
+     0.105,
+     0.045,
+     0.064
+    ]
+   },
+   {
+    "name": "pebbles_11",
+    "tris": 160,
+    "size": [
+     0.094,
+     0.079,
+     0.083
+    ]
+   },
+   {
+    "name": "pebbles_12",
+    "tris": 160,
+    "size": [
+     0.084,
+     0.095,
+     0.012
+    ]
+   },
+   {
+    "name": "pebbles_13",
+    "tris": 160,
+    "size": [
+     0.015,
+     0.048,
+     0.028
+    ]
+   },
+   {
+    "name": "pebbles_14",
+    "tris": 160,
+    "size": [
+     0.097,
+     0.032,
+     0.072
+    ]
+   },
+   {
+    "name": "pebbles_15",
+    "tris": 159,
+    "size": [
+     0.061,
+     0.06,
+     0.043
+    ]
+   },
+   {
+    "name": "pebbles_16",
+    "tris": 159,
+    "size": [
+     0.075,
+     0.078,
+     0.023
+    ]
+   },
+   {
+    "name": "pebbles_17",
+    "tris": 159,
+    "size": [
+     0.044,
+     0.087,
+     0.048
+    ]
+   },
+   {
+    "name": "pebbles_18",
+    "tris": 159,
+    "size": [
+     0.032,
+     0.083,
+     0.034
+    ]
+   },
+   {
+    "name": "pebbles_19",
+    "tris": 160,
+    "size": [
+     0.094,
+     0.059,
+     0.01
+    ]
+   },
+   {
+    "name": "pebbles_20",
+    "tris": 159,
+    "size": [
+     0.071,
+     0.049,
+     0.03
+    ]
+   },
+   {
+    "name": "pebbles_21",
+    "tris": 160,
+    "size": [
+     0.08,
+     0.027,
+     0.02
+    ]
+   },
+   {
+    "name": "pebbles_22",
+    "tris": 159,
+    "size": [
+     0.068,
+     0.015,
+     0.038
+    ]
+   },
+   {
+    "name": "pebbles_23",
+    "tris": 159,
+    "size": [
+     0.07,
+     0.024,
+     0.03
+    ]
+   },
+   {
+    "name": "pebbles_24",
+    "tris": 159,
+    "size": [
+     0.045,
+     0.029,
+     0.023
+    ]
+   }
+  ]
+ },
+ "branches": {
+  "source": "dry_branches_medium_01",
+  "src_tris": 16803,
+  "parts": [
+   {
+    "name": "branches_0",
+    "tris": 900,
+    "size": [
+     0.119,
+     0.401,
+     0.095
+    ]
+   },
+   {
+    "name": "branches_1",
+    "tris": 899,
+    "size": [
+     0.106,
+     0.557,
+     0.204
+    ]
+   },
+   {
+    "name": "branches_2",
+    "tris": 900,
+    "size": [
+     0.149,
+     0.458,
+     0.14
+    ]
+   },
+   {
+    "name": "branches_3",
+    "tris": 900,
+    "size": [
+     0.085,
+     0.486,
+     0.093
+    ]
+   },
+   {
+    "name": "branches_4",
+    "tris": 899,
+    "size": [
+     0.112,
+     0.405,
+     0.094
+    ]
+   },
+   {
+    "name": "branches_5",
+    "tris": 821,
+    "size": [
+     0.128,
+     0.36,
+     0.112
+    ]
+   },
+   {
+    "name": "branches_6",
+    "tris": 630,
+    "size": [
+     0.128,
+     0.307,
+     0.139
+    ]
+   },
+   {
+    "name": "branches_7",
+    "tris": 423,
+    "size": [
+     0.214,
+     0.213,
+     0.065
+    ]
+   },
+   {
+    "name": "branches_8",
+    "tris": 318,
+    "size": [
+     0.067,
+     0.133,
+     0.027
+    ]
+   }
+  ]
+ },
+ "fire_pit": {
+  "source": "stone_fire_pit",
+  "src_tris": 3887,
+  "parts": [
+   {
+    "name": "fire_pit",
+    "tris": 3887,
+    "size": [
+     1.448,
+     1.433,
+     0.388
+    ]
+   }
+  ]
+ },
+ "iron_gate": {
+  "source": "large_iron_gate",
+  "src_tris": 38140,
+  "parts": [
+   {
+    "name": "iron_gate",
+    "tris": 22000,
+    "size": [
+     2.95,
+     0.097,
+     2.929
+    ]
+   }
+  ]
+ },
+ "statue": {
+  "source": "gothic_statue",
+  "src_tris": 27739,
+  "parts": [
+   {
+    "name": "statue",
+    "tris": 11999,
+    "size": [
+     1.475,
+     1.564,
+     1.74
+    ]
+   }
+  ]
+ },
+ "log_thin": {
+  "source": "dead_tree_trunk",
+  "src_tris": 101802,
+  "parts": [
+   {
+    "name": "log_thin",
+    "tris": 4999,
+    "size": [
+     3.049,
+     0.276,
+     0.288
+    ]
+   }
+  ]
+ },
+ "log_big": {
+  "source": "dead_tree_trunk_02",
+  "src_tris": 83128,
+  "parts": [
+   {
+    "name": "log_big",
+    "tris": 6999,
+    "size": [
+     4.052,
+     1.053,
+     1.057
+    ]
+   }
+  ]
+ },
+ "stump": {
+  "source": "tree_stump_01",
+  "src_tris": 41046,
+  "parts": [
+   {
+    "name": "stump",
+    "tris": 5000,
+    "size": [
+     1.425,
+     1.591,
+     0.572
+    ]
+   }
+  ]
+ },
+ "lantern": {
+  "source": "Lantern_01",
+  "src_tris": 33902,
+  "parts": [
+   {
+    "name": "lantern",
+    "tris": 4999,
+    "size": [
+     0.123,
+     0.097,
+     0.294
+    ]
+   }
+  ]
+ },
+ "street_lamp": {
+  "source": "street_lamp_01",
+  "src_tris": 30610,
+  "parts": [
+   {
+    "name": "street_lamp",
+    "tris": 4000,
+    "size": [
+     0.705,
+     0.384,
+     3.871
+    ]
+   }
+  ]
+ }
+}
