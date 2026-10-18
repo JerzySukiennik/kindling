@@ -268,6 +268,7 @@ export class Monster {
     } else {
       goal.set(this.pos.x, 0, this.pos.z + 5);
     }
+    if (this.goal) goal.copy(this.goal);
     const reach = T.reach * (this.crawling ? 0.75 : 1);
     if (this.state === 'walk') {
       if (target && dist < reach && this.armsUsable > 0 && this.cooldown <= 0) {
@@ -276,7 +277,7 @@ export class Monster {
         this.mgr.onAttackStart(this, target);
       }
     }
-    let desired = T.speed * this.speedFactor();
+    let desired = T.speed * this.speedFactor() * (this.speedMul ?? 1);
     if (this.state === 'attack') {
       desired = 0.2;
       this.attackT += dt;
@@ -338,6 +339,15 @@ export class Monster {
 
   stepLimbs(dt, limbs, anchor, spread, stride, lift, isArm) {
     const sp = Math.max(this.speedNow, 0.25);
+    let pick = null;
+    if (this.beatFn) {
+      const n = Math.floor(this.beatFn());
+      if (n !== this.lastBeatN) {
+        this.lastBeatN = n;
+        const L = limbs[((n % limbs.length) + limbs.length) % limbs.length];
+        if (L && !L.swing) pick = L;
+      }
+    }
     for (const L of limbs) {
       const desired = T4.copy(anchor).addScaledVector(this.lat, L.side * spread).addScaledVector(this.fwd, this.speedNow * 0.22);
       desired.y = groundHeight(desired.x, desired.z);
@@ -345,11 +355,11 @@ export class Monster {
       if (!L.swing) {
         const other = limbs.find((o) => o !== L);
         const otherBusy = other && other.swing;
-        const far = plant.distanceTo(desired) > stride * 0.55;
-        if (far && !otherBusy) {
+        const far = this.beatFn ? pick === L : plant.distanceTo(desired) > stride * 0.55 && !otherBusy;
+        if (far) {
           const to = desired.clone().addScaledVector(this.fwd, stride * 0.42 * Math.min(1, this.speedNow / 0.8 + 0.2));
           to.y = groundHeight(to.x, to.z);
-          L.swing = { from: plant.clone(), to, t: 0, dur: THREE.MathUtils.clamp((stride / sp) * 0.42, 0.16, 0.55) };
+          L.swing = { from: plant.clone(), to, t: 0, dur: this.beatFn ? (this.beatPeriod || 0.5) * 0.55 : THREE.MathUtils.clamp((stride / sp) * 0.42, 0.16, 0.55) };
         }
       }
       if (L.swing) {
@@ -396,10 +406,26 @@ export class Monster {
       footAvg /= legsFull.length;
       const legH = (T.thigh + T.shin) * (legsFull.length === 1 ? 0.88 : 0.93);
       pelvisH = Math.max(0.2, footAvg - this.pos.y + legH * 0.97) - Math.abs(bob);
-      if (legsFull.length === 1) pelvisH -= 0.05 + Math.abs(Math.sin(t * 7)) * 0.06;
+      if (legsFull.length === 1) {
+        if (this.beatFn) {
+          const b = this.beatFn();
+          const fr = b - Math.floor(b);
+          pelvisH += Math.sin(Math.PI * Math.min(1, fr / 0.55)) * 0.16 - 0.06;
+        } else pelvisH -= 0.05 + Math.abs(Math.sin(t * 7)) * 0.06;
+      }
     }
     j.P.copy(this.pos).addScaledVector(UP, pelvisH);
-    const tilt = legsFull.length === 1 ? (this.legs[0].state === 'full' ? 0.18 : -0.18) : Math.sin(t * 2 + this.wob) * 0.04;
+    let sway = 0;
+    let beatFr = 0;
+    if (this.dance && this.beatFn) {
+      const b = this.beatFn();
+      const n = Math.floor(b);
+      beatFr = b - n;
+      const e = 1 - Math.pow(1 - Math.min(1, beatFr / 0.3), 3);
+      sway = THREE.MathUtils.lerp(n % 2 ? -1 : 1, n % 2 ? 1 : -1, e);
+    }
+    this.sway = sway;
+    const tilt = (legsFull.length === 1 ? (this.legs[0].state === 'full' ? 0.18 : -0.18) : Math.sin(t * 2 + this.wob) * 0.04) + sway * 0.14;
     this.up.copy(UP).applyAxisAngle(this.lat, this.lean).applyAxisAngle(this.fwd, tilt).normalize();
     if (this.twitch.t > 0) this.up.addScaledVector(this.twitch.dir, this.twitch.t * 0.5).normalize();
     j.C.copy(j.P).addScaledVector(this.up, T.spine);
@@ -448,6 +474,10 @@ export class Monster {
         tgt.addScaledVector(this.lat, A.side * 0.18).addScaledVector(UP, (1 - k) * 0.9 - 0.25);
         T2.copy(sh).addScaledVector(this.fwd, 0.2).addScaledVector(UP, 0.6);
         tgt.lerpVectors(T2, tgt, k * k);
+      } else if (this.dance) {
+        tgt = T4.copy(sh).addScaledVector(this.fwd, (T.uarm + T.farm) * 0.7)
+          .addScaledVector(UP, T.uarm * 0.12 + Math.sin(Math.PI * Math.min(1, beatFr / 0.5)) * 0.12)
+          .addScaledVector(this.lat, sway * T.shoulder * 1.5 + A.side * T.shoulder * 0.25);
       } else {
         const swing = Math.sin(t * (2.2 + this.speedNow * 2) + A.i * Math.PI + this.wob) * 0.25;
         tgt = T4.copy(sh).addScaledVector(this.fwd, (T.uarm + T.farm) * (0.62 + swing * 0.5))

@@ -195,6 +195,7 @@ export class Audio {
   }
 
   noiseHit(pos, { vol = 1, f = 1200, q = 1, type = 'bandpass', dur = 0.12, attack = 0.002, reverb = 0.25, at = 0 } = {}) {
+    if (!this.ctx) return;
     const c = this.ctx;
     const t = c.currentTime + at;
     const s = c.createBufferSource();

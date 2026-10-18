@@ -307,6 +307,7 @@ export class Game {
     this.phaseUpdate(dt, now, input);
     this.monsters.update(wdt, now, this.phase === 'lobby' ? [] : this.players);
     this.updateSpikes(wdt, now);
+    if (!this.bot) this.botFire = false;
     this.updateLaser(dt, now, control && (input.fire || this.botFire));
     this.debris.update(wdt, now);
     this.barrier.update(wdt, now);
@@ -893,11 +894,12 @@ export class Game {
       const d = m.pos.distanceTo(p.pos);
       if (d < bd) { bd = d; best = m; }
     }
-    if (best) {
-      const seg = best.segs.find((s) => s.key === 'torso' && s.attached) || best.segs.find((s) => s.attached);
+    const forced = this.botTarget ? this.botTarget() : undefined;
+    if (forced !== undefined || best) {
+      const seg = forced !== undefined ? forced : best.segs.find((s) => s.key === 'torso' && s.attached) || best.segs.find((s) => s.attached);
       if (seg) {
-        const tgt = this._v.lerpVectors(seg.A, seg.B, 0.5);
-        const from = this.camera.position;
+        const tgt = this._v.lerpVectors(seg.A, seg.B, this.botAimT ?? 0.5);
+        const from = p.camPos.lengthSq() > 0 ? p.camPos : this.camera.position;
         const d = this._v2.subVectors(tgt, from).normalize();
         const yaw = Math.atan2(-d.x, -d.z);
         const pitch = Math.asin(THREE.MathUtils.clamp(d.y, -1, 1));
@@ -906,7 +908,7 @@ export class Game {
         while (dy < -Math.PI) dy += Math.PI * 2;
         p.yaw += dy * Math.min(1, dt * 10);
         p.pitch += (pitch - p.pitch) * Math.min(1, dt * 10);
-        this.botFire = Math.abs(dy) < 0.06 && bd < 70;
+        this.botFire = Math.abs(dy) < 0.06 && (forced !== undefined || bd < 70);
       }
     }
     const w = this.debris.wave;

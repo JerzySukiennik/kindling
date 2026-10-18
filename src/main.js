@@ -131,7 +131,7 @@ async function boot() {
   audio.setVolumes(settings.music, settings.sfx);
   audio.setupMusic().then(() => { $('music-name').textContent = audio.musicName; audio.analyzeIntro(); });
   audio.setupLobby().then(() => { $('lobby-music-name').textContent = audio.lobbyName; });
-  fetch('private/jurek_avatar.glb', { method: 'HEAD' }).then(async (r) => {
+  if (!new URLSearchParams(location.search).get('reel')) fetch('private/jurek_avatar.glb', { method: 'HEAD' }).then(async (r) => {
     if (!r.ok) return;
     avatarChar = await AvatarCharacter.load(scene, 'private/jurek_avatar.glb', profile.beamColor());
     shopUI.extraCostumes = [{ id: 'jurek', name: 'Jurek', desc: 'You. RTFKT hoodie, H&M sweatpants, green Crocs.', price: 0, free: true }];
@@ -390,7 +390,8 @@ async function boot() {
       camera.lookAt(lobby.wardrobe.camLook);
       if (camera.fov !== 50) { camera.fov = 50; camera.updateProjectionMatrix(); }
     }
-    player.char.root.visible = !wOpen;
+    player.char.root.visible = !wOpen && !player.hidden;
+    if (window.kindling && window.kindling.reelHook) window.kindling.reelHook(dt);
     sky.update(U.time.value, U.fire.value, game.lightningLevel || 0);
     R.final.uniforms.uFlash.value = (game.lightningLevel || 0) * 0.22;
     hud.update(dt);
@@ -423,11 +424,19 @@ async function boot() {
 
   window.kindling = {
     THREE, game, R, scene, camera, sticks, debris, monsters, barrier, bonfire, player, physics, audio, input, hud, settings, lobby, profile, shopUI, applyLook, get avatar() { return avatarChar; },
-    tick, startGame, toMenu, applyPreset, director,
+    tick, startGame, toMenu, applyPreset, director, particles, props, laserFX,
+    enterPlay() { mode = 'play'; paused = false; show('menu', false); show('loading', false); hud.show(false); input.enabled = false; },
     run(seconds, dt = 1 / 60) { const n = Math.round(seconds / dt); for (let i = 0; i < n; i++) tick(dt); },
     sim(seconds, dt = 1 / 30) { skipRender = true; try { const n = Math.round(seconds / dt); for (let i = 0; i < n; i++) tick(dt); } finally { skipRender = false; } },
   };
   setLoad(1, 'Ready');
+  const reelName = new URLSearchParams(location.search).get('reel');
+  if (reelName) {
+    show('loading', false);
+    window.kindling.frozen = true;
+    import('./reel.js').then((m) => m.setupReel(window.kindling, reelName));
+    return;
+  }
   director.enter();
   show('menu', true);
   $('loading').classList.add('out');
