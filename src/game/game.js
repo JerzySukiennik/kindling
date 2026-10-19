@@ -111,7 +111,7 @@ export class Game {
   wireHandlers() {
     const M = this.monsters;
     M.handlers.attackStart = (m) => { this.audio.creak(m.j.H); };
-    M.handlers.grab = (m, p) => this.killPlayer(p, 'grab', m);
+    M.handlers.grab = (m, p) => { if (p === this.player) this.killPlayer(p, 'grab', m); else if (this.mp) this.mp.grab(p, m); };
     M.handlers.death = (m) => {
       this.audio.snap(m.j.C, 1);
       this.audio.knock(m.j.P, 0.6);
@@ -119,6 +119,7 @@ export class Game {
         this.respawns.push({ spot: m.spot, t: 2.5 });
         return;
       }
+      if (this.mp && m.net && m.lastCutBy !== this.mp.uid) return;
       this.stats.kills++;
       this.giveCandy(TYPES[m.type].candy, m.j.C, true);
     };
@@ -138,6 +139,7 @@ export class Game {
     };
     this.barrier.events.dump = () => {
       this.debris.endWave();
+      if (!this.inNight()) return;
       this.phase = 'burn';
       this.timer = 3.5;
       this.audio.knock(this._v.set(0, 0.5, PIT.z0), 1);
@@ -206,7 +208,9 @@ export class Game {
     this.lobby.drawBoard(this.profile);
     this.applyLoadout();
     this.audio.toLobby();
-    this.hud.message('Graveyard Hill', 'Shop, practice, ring the bell · 1-4 emotes · R +60 s', 3.6);
+    this.bellRung = false;
+    this.hud.message('Graveyard Hill', this.mp ? 'Shop, practice, ring the bell when you are ready · 1-4 emotes' : 'Shop, practice, ring the bell · 1-4 emotes · R +60 s', 3.6);
+    if (this.mp) this.mp.onLobby();
   }
 
   spawnDummy(spot) {
@@ -230,6 +234,16 @@ export class Game {
 
   newGame(introHit = null) {
     this.introSync = introHit;
+    this.resetNight();
+    this.round = 0;
+    this.queue = [];
+    this.lastSpawn = null;
+    this.sweepDelay = -1;
+    this.barrierPending = false;
+    this.nextRound(true);
+  }
+
+  resetNight() {
     this.monsters.clear();
     this.debris.clearAll();
     for (const s of this.hot) s.heat = 0;
@@ -245,23 +259,24 @@ export class Game {
     this.spikeMesh.count = 0;
     this.player.setArea('zone');
     this.player.reset();
+    if (this.mp) { this.player.pos.x = this.mp.spawnX(); this.player.pos.y = groundHeight(this.player.pos.x, this.player.pos.z); }
     this.barrier.reset();
     if (this.props) this.props.restoreCandles();
-    this.queue = [];
-    this.lastSpawn = null;
-    this.sweepDelay = -1;
-    this.barrierPending = false;
     this.applyLoadout();
-    this.nextRound(true);
   }
 
   nextRound(first = false) {
     this.round++;
     this.phase = 'intermission';
     this.timer = first ? (this.introSync ? this.introSync + 1.5 : 7) : 6;
+    this.roundUI(first);
+  }
+
+  roundUI(first) {
     this.spikeCharges = 1;
     this.hud.setRound(`Round ${this.round}`);
-    for (const p of this.players) if (!p.alive) { p.setGhost(false); p.pos.set(0, groundHeight(0, 6), 6); }
+    const sx = this.mp ? this.mp.spawnX() : 0;
+    for (const p of this.players) if (!p.alive) { p.setGhost(false); p.pos.set(sx, groundHeight(sx, 6), 6); }
     this.hud.ghost(false);
     this.renderer.final.uniforms.uGhost.value = 0;
     if (!first) this.hud.message(`Round ${this.round}`, 'Get ready', 2.6);
@@ -304,8 +319,11 @@ export class Game {
     this.player.beat = this.audio.beatNow(this.time);
     this.updateAbilities(dt, input, control);
     const wdt = this.slowT > 0 ? dt * 0.35 : dt;
-    this.phaseUpdate(dt, now, input);
-    this.monsters.update(wdt, now, this.phase === 'lobby' ? [] : this.players);
+    const host = !this.mp || this.mp.isHost;
+    if (this.mp) this.mp.preUpdate(dt, now);
+    if (this.mp && !host) this.mp.mirror(dt, now);
+    this.phaseUpdate(dt, now, input, host);
+    this.monsters.update(wdt, now, this.phase === 'lobby' ? [] : this.mp ? this.mp.targets() : this.players);
     this.updateSpikes(wdt, now);
     if (!this.bot) this.botFire = false;
     this.updateLaser(dt, now, control && (input.fire || this.botFire));
@@ -317,6 +335,7 @@ export class Game {
     if (this.lobby) this.lobby.update(dt, now, this.wardrobeOpen);
     this.hud.setCandy(this.profile.candy);
     this.hud.setHeat(this.gunHeat, this.overheat);
+    if (this.mp) this.mp.postUpdate(dt, now);
   }
 
   updateAbilities(dt, input, control) {
@@ -329,6 +348,7 @@ export class Game {
       this.slowCD = 30;
       this.audio.whoosh(0.6);
       this.lightning(0.25);
+      if (this.mp) this.mp.event('slow');
     }
     if (control && arena && P.has('abilities', 'spikes') && input.hit('KeyF') && this.spikeCharges > 0) this.placeSpikes();
     if (this.audio.music) this.audio.music.playbackRate = this.slowT > 0 ? 0.82 : 1;
@@ -348,8 +368,9 @@ export class Game {
     if (t > 0) { x = this._v.x; z = this._v.z; } else { x = this.player.pos.x; z = this.player.pos.z - 12; }
     z = THREE.MathUtils.clamp(z, -55, -2.5);
     x = THREE.MathUtils.clamp(x, FIELD.x0 + 4, FIELD.x1 - 4);
-    this.spikes = { x, z, t: 0, life: 15, hitSet: new Set() };
+    this.spikes = { x, z, t: 0, life: 15, hitSet: new Set(), own: true };
     this.spikeCharges--;
+    if (this.mp) this.mp.event('spk', { x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100 });
     this.audio.rumble(this._v.set(x, 0.5, z), 1.0, 0.8);
     for (let i = 0; i < 10; i++) this.particles.dust(this._v.set(x + (Math.random() - 0.5) * 7, groundHeight(x, z) + 0.1, z), 1, 0.5, 0.8);
   }
@@ -376,11 +397,12 @@ export class Game {
     for (const mo of this.monsters.monsters) {
       if (!mo.alive || mo.dummy || mo.npc) continue;
       if (Math.abs(mo.pos.z - s.z) < 1.0 && Math.abs(mo.pos.x - s.x) < 3.9) {
-        mo.speedNow *= 0.3;
-        if (!s.hitSet.has(mo)) {
+        if (!mo.puppet) mo.speedNow *= 0.3;
+        if (s.own && !s.hitSet.has(mo)) {
           s.hitSet.add(mo);
           const shin = mo.segs.find((g) => g.key.startsWith('shin') && g.attached && g.keep === 1);
-          if (shin) {
+          if (shin && this.mp && mo.net) this.mp.requestCut(mo, shin, 0.5);
+          else if (shin) {
             const res = mo.cut(shin, 0.5, now);
             if (res) {
               this.audio.snap(res.point, 0.8);
@@ -394,11 +416,12 @@ export class Game {
     if (s.t >= s.life) { this.spikes = null; im.count = 0; }
   }
 
-  phaseUpdate(dt, now, input) {
+  phaseUpdate(dt, now, input, host = true) {
     const alive = this.monsters.aliveCount;
     switch (this.phase) {
-      case 'lobby': this.updateLobby(dt, input); break;
+      case 'lobby': this.updateLobby(dt, input, host); break;
       case 'transition': {
+        if (!host) break;
         this.transT += dt;
         if (this.transT > 0.75) {
           this.bellRung = false;
@@ -410,6 +433,7 @@ export class Game {
         break;
       }
       case 'intermission': {
+        if (!host) { this.hud.setStatus(this.timer > 0 ? `Next round in ${Math.ceil(this.timer)}` : ''); break; }
         this.timer -= dt;
         if (this.introSync) {
           this.hud.setStatus('');
@@ -427,6 +451,7 @@ export class Game {
         break;
       }
       case 'spawning': {
+        if (!host) { this.hud.setStatus(`${alive + (this.mp.g ? this.mp.g.q || 0 : 0)} left`); break; }
         this.spawnT += dt * (this.slowT > 0 ? 0.35 : 1);
         while (this.queue.length && this.queue[0].at <= this.spawnT) {
           const s = this.queue.shift();
@@ -440,6 +465,7 @@ export class Game {
       }
       case 'fight': {
         this.hud.setStatus(alive ? `${alive} left` : '');
+        if (!host) break;
         if (this.barrierPending) {
           const ls = this.lastSpawn;
           if (!ls || !ls.alive || ls.pos.z > BARRIER_Z + 2.8) { this.barrier.rise(); this.barrierPending = false; }
@@ -480,13 +506,11 @@ export class Game {
         break;
       }
       case 'burn': {
-        this.timer -= dt;
         this.hud.setStatus('');
+        if (!host) break;
+        this.timer -= dt;
         if (this.timer <= 0) {
-          const bonus = this.round * 10;
-          this.giveCandy(bonus, null, false);
-          this.hud.message(`Round ${this.round} survived`, `+${bonus} candy corn`, 2.6);
-          this.audio.chime();
+          this.roundBonus();
           this.nextRound();
         }
         break;
@@ -495,17 +519,27 @@ export class Game {
     }
   }
 
-  updateLobby(dt, input) {
+  roundBonus() {
+    const bonus = this.round * 10;
+    this.giveCandy(bonus, null, false);
+    this.hud.message(`Round ${this.round} survived`, `+${bonus} candy corn`, 2.6);
+    this.audio.chime();
+  }
+
+  updateLobby(dt, input, host = true) {
     const p = this.player;
-    if (!this.uiOpen) this.lobbyTimer -= dt;
-    if (!this.uiOpen && input.hit('KeyR') && !this.bellRung) {
+    if (this.mp) this.lobbyTimer = this.mp.lobbyLeft();
+    else if (!this.uiOpen) this.lobbyTimer -= dt;
+    if (!this.mp && !this.uiOpen && input.hit('KeyR') && !this.bellRung) {
       this.lobbyTimer = Math.min(this.lobbyTimer + 60, 600);
       this.hud.message('+60 s', 'The night can wait', 1.6);
       this.audio.chime();
     }
     const t = Math.max(0, Math.ceil(this.lobbyTimer));
-    this.hud.timer(this.bellRung ? 'The bell tolls' : `Night falls in ${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}  ·  R +60 s`);
-    if (this.lobbyTimer <= 0) { this.bellRung = false; this.startNight(); return; }
+    const clock = `Night falls in ${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+    if (this.mp) this.hud.timer(`${clock}  ·  ${this.mp.readyText()}`);
+    else this.hud.timer(this.bellRung ? 'The bell tolls' : `${clock}  ·  R +60 s`);
+    if (this.lobbyTimer <= 0 && host) { this.bellRung = false; this.startNight(); return; }
     let near = null;
     let best = 1e9;
     for (const it of this.lobby.interactables) {
@@ -519,7 +553,8 @@ export class Game {
           this.bellRung = true;
           this.lobby.ringBell();
           this.audio.bell(3);
-          this.lobbyTimer = Math.min(this.lobbyTimer, 4);
+          if (this.mp) this.mp.setReady(true);
+          else this.lobbyTimer = Math.min(this.lobbyTimer, 4);
         }
       } else this.events.openShop(near.id);
     }
@@ -555,14 +590,27 @@ export class Game {
 
   startRound(bell) {
     this.phase = 'spawning';
-    this.queue = this.buildQueue(this.round);
+    const crew = this.mp ? this.mp.crewSize() : 1;
+    let q = this.buildQueue(this.round);
+    if (crew > 1) {
+      const more = this.buildQueue(this.round);
+      q = q.concat(more.slice(0, Math.round(more.length * 0.6 * (crew - 1))).map((x) => ({ ...x, at: x.at + 0.4 })));
+    }
+    this.queue = q.sort((a, b) => a.at - b.at).slice(0, 60);
     this.total = this.queue.length;
     this.spawnT = 0;
-    if (bell) this.audio.bell(Math.min(3, 1 + Math.floor(this.round / 4)));
-    this.hud.message(`Round ${this.round}`, `${this.total} are coming`, 2.8);
+    this.roundStartUI(this.total, bell);
   }
 
+  roundStartUI(total, bell) {
+    if (bell) this.audio.bell(Math.min(3, 1 + Math.floor(this.round / 4)));
+    this.hud.message(`Round ${this.round}`, `${total} are coming`, 2.8);
+  }
+
+  inNight() { return ['intermission', 'spawning', 'fight', 'sweep', 'wave', 'burn'].includes(this.phase); }
+
   launchWave() {
+    if (!this.inNight()) return;
     const pile = this.debris.fieldCount();
     const height = Math.min(0.9, 0.36 + this.round * 0.045 + pile * 0.0004);
     const length = Math.min(2.6, 0.95 + this.round * 0.11 + pile * 0.001);
@@ -625,11 +673,15 @@ export class Game {
     this.particles.dust(p.pos, 10, 0.8, 1.0);
     p.shake = 1;
     if (p === this.player) this.hud.ghost(true);
-    if (this.players.every((q) => !q.alive)) {
-      this.phase = 'gameover';
-      this.profile.recordGame(Math.max(0, this.round - 1), this.stats.sticks, this.stats.kills);
-      setTimeout(() => this.events.gameover(this), 2200);
-    }
+    if (!this.mp && this.players.every((q) => !q.alive)) this.endGame();
+  }
+
+  endGame() {
+    if (this.phase === 'gameover') return;
+    this.phase = 'gameover';
+    this.profile.recordGame(Math.max(0, this.round - 1), this.stats.sticks, this.stats.kills);
+    if (this.mp) this.mp.onGameOver();
+    setTimeout(() => { if (this.phase === 'gameover' || this.mp) this.events.gameover(this); }, 2200);
   }
 
   giveCandy(n, at, burst) {
@@ -859,17 +911,22 @@ export class Game {
     }
     if (s.heat >= 1) {
       const m = hit.monster;
-      const res = m.cut(s, s.hotT, now);
       s.heat = 0;
       this.hot.delete(s);
-      if (!res) return;
-      this.stats.cuts++;
-      this.audio.snap(res.point, Math.min(1, s.r * 12));
-      this.particles.sparks(res.point, null, 14, null, 5);
-      this.particles.embers(res.point, 8, 0.1, 1.5);
-      this.particles.smoke(res.point, 3, 0.08, 0.5, 0.25 + s.r * 3, 0.8);
-      if (!res.kill && !m.dummy) this.giveCandy(res.decor ? 1 : 2, res.point, false);
+      if (this.mp && m.net) { this.mp.requestCut(m, s, s.hotT); return; }
+      const res = m.cut(s, s.hotT, now);
+      if (res) this.cutFx(res, s, m, true);
     }
+  }
+
+  cutFx(res, s, m, mine) {
+    this.audio.snap(res.point, Math.min(1, s.r * 12));
+    this.particles.sparks(res.point, null, 14, null, 5);
+    this.particles.embers(res.point, 8, 0.1, 1.5);
+    this.particles.smoke(res.point, 3, 0.08, 0.5, 0.25 + s.r * 3, 0.8);
+    if (!mine) return;
+    this.stats.cuts++;
+    if (!res.kill && !m.dummy) this.giveCandy(res.decor ? 1 : 2, res.point, false);
   }
 
   updatePushers() {

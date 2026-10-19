@@ -161,8 +161,35 @@
   <button id="btn-settings-back" class="btn">Back</button>
 </div>
 
+<div id="servers" class="screen panel hidden">
+  <div class="panel-title">Graveyards</div>
+  <div class="sv-box">
+    <div class="sv-row-top">
+      <label class="sv-nick"><span>Your name</span><input id="sv-nick" maxlength="14" spellcheck="false" autocomplete="off"></label>
+      <button id="sv-dice" class="btn small" title="Random name">Random</button>
+    </div>
+    <div class="sv-row-top">
+      <button id="sv-quick" class="btn primary">Quick play</button>
+      <button id="sv-create" class="btn">New server</button>
+      <label class="sv-priv"><input type="checkbox" id="sv-private"><span>Private</span></label>
+      <span class="sv-spacer"></span>
+      <input id="sv-code" class="sv-code" maxlength="4" placeholder="CODE" spellcheck="false" autocomplete="off">
+      <button id="sv-join" class="btn">Join</button>
+    </div>
+    <div class="sv-head"><span>Code</span><span>Hill</span><span>Keepers</span><span>Status</span><span></span></div>
+    <div id="sv-list" class="sv-list"></div>
+    <div id="sv-status" class="sv-status"></div>
+    <div class="sv-row-top sv-foot">
+      <button id="sv-solo" class="btn ghost">Play solo, offline</button>
+      <span class="sv-spacer"></span>
+      <button id="sv-back" class="btn ghost">Back</button>
+    </div>
+  </div>
+</div>
+
 <div id="pause" class="screen hidden">
   <div class="title small">Paused</div>
+  <div id="pause-server" class="sub hidden"></div>
   <div class="menu-buttons">
     <button id="btn-resume" class="btn primary">Resume</button>
     <button id="btn-pause-settings" class="btn">Settings</button>
@@ -205,7 +232,10 @@
   <div id="hud-abilities"></div>
   <div id="hud-timer" class="hidden"></div>
   <div id="hud-debug" class="hidden"></div>
+  <div id="hud-roster" class="hidden"></div>
+  <div id="hud-feed"></div>
 </div>
+<div id="name-tags"></div>
 
 <div id="shop" class="hidden"></div>
 <div id="fade"></div>

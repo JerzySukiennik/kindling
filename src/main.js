@@ -28,6 +28,9 @@ import { createLobby } from './world/lobby.js';
 import { ShopUI } from './ui/shop.js';
 import { AvatarCharacter } from './game/avatar.js';
 import { MenuDirector } from './ui/menu.js';
+import { Net } from './net/net.js';
+import { Multiplayer } from './game/mp.js';
+import { ServersUI } from './ui/servers.js';
 
 const $ = (id) => document.getElementById(id);
 const SETTINGS_KEY = 'kindling.settings';
@@ -111,6 +114,7 @@ async function boot() {
     const body = profile.data.equipped.body;
     if (body === 'jurek' && avatarChar) { player.setCharacter(avatarChar); avatarChar.setCostume(cos); }
     else { player.setCharacter(baseChar); baseChar.setCostume(cos); }
+    if (game.mp) game.mp.updateLook();
   };
   const shopUI = new ShopUI(profile, () => { applyLook(); game.applyLoadout(); });
   shopUI.onHover = (cat, id) => { if (shopUI.mode === 'wardrobe') lobby.wardrobe.focus(cat, id); };
@@ -191,7 +195,7 @@ async function boot() {
   };
   refreshMenu();
 
-  const startGame = async () => {
+  const startGame = async (mp = null, priv = false) => {
     await audio.init();
     audio.resume();
     if (!audio.music) await audio.setupMusic();
@@ -207,11 +211,50 @@ async function boot() {
     mode = 'play';
     paused = false;
     monsters.clear();
-    game.enterLobby();
+    game.mp = mp;
+    if (mp) mp.start(priv); else game.enterLobby();
+    $('pause-server').classList.toggle('hidden', !mp);
+    $('pause-server').textContent = mp ? `Server ${mp.code}${priv ? ' · private' : ''}` : '';
+    $('btn-quit').textContent = mp ? 'Leave server' : 'Quit to menu';
+    $('btn-go-menu').textContent = mp ? 'Leave server' : 'Menu';
     input.enabled = true;
     input.lock();
     autoQ.reset();
   };
+
+  let net = null;
+  const getNet = async () => {
+    if (!net) {
+      const n = new Net();
+      await n.connect();
+      net = n;
+    }
+    return net;
+  };
+  const enterWorld = async (mp, priv) => {
+    const f = $('fade');
+    f.style.transition = 'none';
+    f.classList.add('on');
+    void f.offsetWidth;
+    f.style.transition = '';
+    await startGame(mp, priv);
+    requestAnimationFrame(() => requestAnimationFrame(() => f.classList.remove('on')));
+  };
+  const serversUI = new ServersUI({
+    getNet,
+    look: () => `${profile.data.equipped.costume || 'none'}|${profile.data.equipped.beam || 'toxic'}`,
+    onStart: (sid, priv) => {
+      audio.init();
+      const mp = new Multiplayer({ game, net, scene, camera, hud, profile, particles, audio, lobby });
+      enterWorld(mp, priv);
+    },
+    onSolo: async () => {
+      audio.init();
+      await director.leave();
+      enterWorld(null);
+    },
+    onBack: () => { show('menu', true); director.enter(true); },
+  });
 
   game.events.fade = (on) => $('fade').classList.toggle('on', on);
   game.events.openShop = (id) => {
@@ -257,24 +300,18 @@ async function boot() {
     show(from, false);
     show('settings', true);
   };
-  $('btn-play').onclick = async () => {
+  $('btn-play').onclick = () => {
     if (director.leaving) return;
     audio.init();
-    await director.leave();
-    const f = $('fade');
-    f.style.transition = 'none';
-    f.classList.add('on');
-    void f.offsetWidth;
-    f.style.transition = '';
-    await startGame();
-    requestAnimationFrame(() => requestAnimationFrame(() => f.classList.remove('on')));
+    show('menu', false);
+    serversUI.open();
   };
   $('btn-again').onclick = () => {
     show('gameover', false);
     hud.show(true);
     mode = 'play';
     input.enabled = true;
-    game.enterLobby();
+    if (!game.mp) game.enterLobby();
     input.lock();
   };
   $('btn-settings').onclick = () => openSettings('menu');
@@ -282,6 +319,12 @@ async function boot() {
   $('btn-settings-back').onclick = () => { show('settings', false); show(settingsFrom, true); if (settingsFrom === 'menu') director.enter(true); };
   $('btn-resume').onclick = () => { show('pause', false); paused = false; input.lock(); };
   const toMenu = () => {
+    if (game.mp) {
+      const mp = game.mp;
+      game.mp = null;
+      mp.leave();
+      lobby.online = null;
+    }
     mode = 'menu';
     paused = false;
     input.enabled = false;
@@ -374,7 +417,7 @@ async function boot() {
   const tick = (dt) => {
     if (window.kindling && window.kindling.frozen) return;
     game.wardrobeOpen = shopUI.open && shopUI.mode === 'wardrobe';
-    if (paused) dt = 0;
+    if (paused && !game.mp) dt = 0;
     U.time.value += dt;
     const mouse = input.consume();
     if (dt > 0) physics.step(dt);
@@ -424,7 +467,7 @@ async function boot() {
 
   window.kindling = {
     THREE, game, R, scene, camera, sticks, debris, monsters, barrier, bonfire, player, physics, audio, input, hud, settings, lobby, profile, shopUI, applyLook, get avatar() { return avatarChar; },
-    tick, startGame, toMenu, applyPreset, director, particles, props, laserFX,
+    tick, startGame, toMenu, applyPreset, director, particles, props, laserFX, netRef: () => net,
     enterPlay() { mode = 'play'; paused = false; show('menu', false); show('loading', false); hud.show(false); input.enabled = false; },
     run(seconds, dt = 1 / 60) { const n = Math.round(seconds / dt); for (let i = 0; i < n; i++) tick(dt); },
     sim(seconds, dt = 1 / 30) { skipRender = true; try { const n = Math.round(seconds / dt); for (let i = 0; i < n; i++) tick(dt); } finally { skipRender = false; } },

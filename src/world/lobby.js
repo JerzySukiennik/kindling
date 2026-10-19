@@ -331,6 +331,36 @@ export function createLobby(scene, assets, cem, bonfire) {
     x.font = '72px "IM Fell English SC", Georgia, serif';
     x.fillText('Hall of Ashes', w / 2, 100);
     const s = profile.data.stats;
+    if (out.online) {
+      const fit = (t, max) => { let v = String(t); while (x.measureText(v).width > max && v.length > 2) v = v.slice(0, -2) + '…'; return v; };
+      const col = (title, rows, x0, x1) => {
+        x.textAlign = 'center';
+        x.fillStyle = '#c9b48e';
+        x.font = '34px "IM Fell English SC", Georgia, serif';
+        x.fillText(title, (x0 + x1) / 2, 160);
+        x.font = '28px "IM Fell English SC", Georgia, serif';
+        rows.slice(0, 6).forEach(([a, b], i) => {
+          const yy = 214 + i * 56;
+          x.textAlign = 'left';
+          x.fillStyle = '#f1dcb2';
+          x.fillText(fit(a, x1 - x0 - 120), x0, yy);
+          x.textAlign = 'right';
+          x.fillStyle = '#ffd08a';
+          x.fillText(b, x1, yy);
+          x.fillStyle = 'rgba(241,220,178,0.12)';
+          x.fillRect(x0, yy + 14, x1 - x0, 2);
+        });
+        if (!rows.length) { x.textAlign = 'center'; x.fillStyle = '#8a7a60'; x.fillText('No one yet', (x0 + x1) / 2, 214); }
+      };
+      col('Best nights', out.online.teams.map((t) => [t.n, `Round ${t.r}`]), 70, 492);
+      col('Best keepers', out.online.players.map((p) => [p.n, `R${p.r} · ${p.s}`]), 532, 954);
+      x.textAlign = 'center';
+      x.fillStyle = '#8a7a60';
+      x.font = '26px "IM Fell English SC", Georgia, serif';
+      x.fillText(`Your best: ${s.bestRound ? 'round ' + s.bestRound : 'no nights yet'}${s.parkourBest ? ` · parkour ${s.parkourBest.toFixed(2)} s` : ''}`, w / 2, h - 44);
+      out.boardCanvas.tex.needsUpdate = true;
+      return;
+    }
     const rows = [
       ['Best night', s.bestRound ? `Round ${s.bestRound}` : '-'],
       ['Most sticks in one night', s.mostSticks || '-'],

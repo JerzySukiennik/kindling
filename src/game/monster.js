@@ -248,6 +248,20 @@ export class Monster {
       this.pose(dt, now);
       return;
     }
+    if (this.puppet) {
+      this.computeFrame();
+      this.pos.y = groundHeight(this.pos.x, this.pos.z);
+      if (this.state === 'attack') this.attackT += dt;
+      this.twitch.next -= dt;
+      if (this.twitch.next <= 0) {
+        this.twitch.next = 0.8 + this.rand() * 3.5;
+        this.twitch.t = 0.25;
+        this.twitch.dir.set(this.rand() - 0.5, (this.rand() - 0.5) * 0.6, this.rand() - 0.5).normalize();
+      }
+      this.twitch.t = Math.max(0, this.twitch.t - dt);
+      this.pose(dt, now);
+      return;
+    }
     let target = null;
     let best = 1e9;
     for (const p of players) {
@@ -681,6 +695,7 @@ export class MonsterManager {
 
   spawnDebris(parts, m, energy) {
     if (!parts.length) return;
+    if (m.silent) { for (const p of parts) this.sticks.release(p.idx); return; }
     const v = this._v.copy(m.fwd).multiplyScalar(m.speedNow * 0.8);
     v.x += (Math.random() - 0.5) * energy * 1.6;
     v.y += 0.6 + Math.random() * energy * 1.4;

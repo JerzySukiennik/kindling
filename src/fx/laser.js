@@ -15,7 +15,8 @@ function glowTexture() {
 }
 
 export class LaserFX {
-  constructor(scene, color = new THREE.Color(0.55, 1.0, 0.3)) {
+  constructor(scene, color = new THREE.Color(0.55, 1.0, 0.3), opts = {}) {
+    this.scene = scene;
     this.color = color.clone();
     const N = 32;
     const t = [];
@@ -103,8 +104,8 @@ export class LaserFX {
     };
     this.muzzle = mk(this.color.clone().multiplyScalar(4), 0.35);
     this.impact = mk(new THREE.Color(6, 3, 1), 0.5);
-    this.light = new THREE.PointLight(0x9cff6a, 0, 7, 2);
-    scene.add(this.light);
+    this.light = opts.light === false ? null : new THREE.PointLight(0x9cff6a, 0, 7, 2);
+    if (this.light) scene.add(this.light);
 
     this.power = 0;
   }
@@ -132,10 +133,15 @@ export class LaserFX {
     this.impact.material.color.setRGB(burning ? 7 : 3, burning ? 3.2 : 4.5, burning ? 0.9 : 1.8);
     this.impact.material.opacity = p;
     this.impact.scale.setScalar((burning ? 0.55 : 0.32) * (0.85 + Math.random() * 0.3));
+    if (!this.light) return;
     this.light.position.copy(end).addScaledVector(this._dir(start, end), -0.25);
     if (burning) this.light.color.setRGB(1, 0.55, 0.2); else this.light.color.copy(this.color);
     this.light.intensity = p * (burning ? 9 : 4) * (0.85 + Math.random() * 0.3);
 
+  }
+
+  dispose() {
+    for (const o of [this.beam, this.muzzle, this.impact, this.light]) if (o) this.scene.remove(o);
   }
 
   _dir(a, b) {

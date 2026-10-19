@@ -3,7 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { BARRIER_Z, BARRIER_STOP_Z, BARRIER_HALF_W, PIT, groundHeight } from '../world/layout.js';
 
 const H = 3.4;
-const HIDE = -3.7;
+export const HIDE = -3.7;
 export const PLOW_TOP = 0.45;
 export const CENTER_HALF = 13.2;
 export const BARRIER_BACK = 0.3;
