@@ -4,7 +4,7 @@ const { chromium } = require('playwright-core');
 
 const N = +(process.env.CLIENTS || 2);
 const SHOTS = process.env.SHOTS || '';
-const url = 'http://localhost:8613/?realm=test';
+const url = process.env.URL || 'http://localhost:8613/?realm=test';
 const browser = await chromium.launch({
   executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   headless: true,
@@ -34,7 +34,7 @@ const info = (c) => ev(c, () => {
 });
 
 for (const c of clients) {
-  await c.page.goto(url);
+  await c.page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await c.page.waitForFunction(() => window.kindling, null, { timeout: 180000, polling: 500 });
   await ev(c, () => { window.kindling.applyPreset('low'); window.kindling.profile.save = () => {}; });
 }
