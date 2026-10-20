@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { Pose } from './rigpose.js';
 import { makeGun, gunMaterials, emoteTargets, buildCostume } from './character.js';
 
@@ -12,7 +13,14 @@ const _n = new THREE.Vector3();
 export class AvatarCharacter {
   static async load(scene, url, beam) {
     const gltf = await new GLTFLoader().loadAsync(url);
+    AvatarCharacter.source = { scene: SkeletonUtils.clone(gltf.scene), animations: gltf.animations };
     return new AvatarCharacter(scene, gltf, beam);
+  }
+
+  static spawn(scene, beam) {
+    const s = AvatarCharacter.source;
+    if (!s) return null;
+    return new AvatarCharacter(scene, { scene: SkeletonUtils.clone(s.scene), animations: s.animations }, beam);
   }
 
   constructor(scene, gltf, beam) {

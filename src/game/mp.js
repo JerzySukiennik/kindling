@@ -84,7 +84,7 @@ export class Multiplayer {
 
   updateLook() {
     const eq = this.profile.data.equipped;
-    this.net.setMe({ lk: `${eq.costume || 'none'}|${eq.beam || 'toxic'}` });
+    this.net.setMe({ lk: `${eq.costume || 'none'}|${eq.beam || 'toxic'}|${eq.body || 'keeper'}` });
   }
 
   feed(text) {
@@ -107,7 +107,7 @@ export class Multiplayer {
       if (uid === this.uid) continue;
       let r = this.remotes.get(uid);
       if (!r) {
-        r = new RemotePlayer(this.scene, uid, info, this.tags);
+        r = new RemotePlayer(this.scene, uid, info, this.tags, this.makeAvatar);
         this.remotes.set(uid, r);
         this.feed(`${r.nick} joined`);
       } else {

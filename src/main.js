@@ -135,10 +135,9 @@ async function boot() {
   audio.setVolumes(settings.music, settings.sfx);
   audio.setupMusic().then(() => { $('music-name').textContent = audio.musicName; audio.analyzeIntro(); });
   audio.setupLobby().then(() => { $('lobby-music-name').textContent = audio.lobbyName; });
-  if (!new URLSearchParams(location.search).get('reel')) fetch('private/jurek_avatar.glb', { method: 'HEAD' }).then(async (r) => {
-    if (!r.ok) return;
-    avatarChar = await AvatarCharacter.load(scene, 'private/jurek_avatar.glb', profile.beamColor());
-    shopUI.extraCostumes = [{ id: 'jurek', name: 'Jurek', desc: 'You. RTFKT hoodie, H&M sweatpants, green Crocs.', price: 0, free: true }];
+  if (!new URLSearchParams(location.search).get('reel')) AvatarCharacter.load(scene, 'assets/avatar/jurek.glb', profile.beamColor()).then(async (a) => {
+    avatarChar = a;
+    shopUI.extraCostumes = [{ id: 'jurek', name: 'Jurek', desc: 'The keeper who made Kindling. RTFKT hoodie, H&M sweatpants, green Crocs.', price: 0, free: true }];
     lobby.wardrobe.setAvatar(avatarChar.model, avatarChar.clips);
     avatarChar.root.visible = true;
     try { await R.renderer.compileAsync(avatarChar.root, camera, scene); } catch (e) { /* compiled on first draw */ }
@@ -242,10 +241,10 @@ async function boot() {
   };
   const serversUI = new ServersUI({
     getNet,
-    look: () => `${profile.data.equipped.costume || 'none'}|${profile.data.equipped.beam || 'toxic'}`,
+    look: () => `${profile.data.equipped.costume || 'none'}|${profile.data.equipped.beam || 'toxic'}|${profile.data.equipped.body || 'keeper'}`,
     onStart: (sid, priv) => {
       audio.init();
-      const mp = new Multiplayer({ game, net, scene, camera, hud, profile, particles, audio, lobby });
+      const mp = new Multiplayer({ game, net, scene, camera, hud, profile, particles, audio, lobby, makeAvatar: (beam) => AvatarCharacter.spawn(scene, beam) });
       enterWorld(mp, priv);
     },
     onSolo: async () => {

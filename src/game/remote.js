@@ -17,9 +17,15 @@ export function encodeState(p, game) {
 }
 
 export class RemotePlayer {
-  constructor(scene, uid, info, tags) {
+  constructor(scene, uid, info, tags, makeAvatar) {
     this.uid = uid;
     this.scene = scene;
+    this.makeAvatar = makeAvatar;
+    this.body = 'keeper';
+    this.wantBody = 'keeper';
+    this.costume = 'none';
+    this.beamC = CATALOG.beams[0].color;
+    this.bodyT = 0;
     this.nick = info.n || 'Keeper';
     this.char = new Character(scene);
     this.char.root.visible = false;
@@ -57,12 +63,27 @@ export class RemotePlayer {
     this.ready = !!info.rd;
     if ((info.lk || '') !== this.look) {
       this.look = info.lk || '';
-      const [costume, beam] = this.look.split('|');
-      this.char.setCostume(costume || 'none');
-      const b = CATALOG.beams.find((x) => x.id === beam) || CATALOG.beams[0];
-      this.char.setBeamColor(b.color);
-      this.fx.setColor(b.color);
+      const [costume, beam, body] = this.look.split('|');
+      this.costume = costume || 'none';
+      this.beamC = (CATALOG.beams.find((x) => x.id === beam) || CATALOG.beams[0]).color;
+      this.wantBody = body === 'jurek' ? 'jurek' : 'keeper';
+      this.applyLook();
     }
+  }
+
+  applyLook() {
+    if (this.wantBody !== this.body) {
+      const next = this.wantBody === 'jurek' ? (this.makeAvatar ? this.makeAvatar(this.beamC) : null) : new Character(this.scene);
+      if (next) {
+        this.scene.remove(this.char.root);
+        next.root.visible = this.char.root.visible;
+        this.char = next;
+        this.body = this.wantBody;
+      }
+    }
+    this.char.setCostume(this.costume);
+    this.char.setBeamColor(this.beamC);
+    this.fx.setColor(this.beamC);
   }
 
   push(str, t) {
@@ -83,6 +104,10 @@ export class RemotePlayer {
   }
 
   update(dt, now, beat, camera, particles) {
+    if (this.wantBody !== this.body) {
+      this.bodyT -= dt;
+      if (this.bodyT <= 0) { this.bodyT = 1; this.applyLook(); }
+    }
     if (!this.seen || !this.buf.length) { this.char.root.visible = false; this.tag.style.display = 'none'; return; }
     const rt = now - DELAY;
     const b = this.buf;

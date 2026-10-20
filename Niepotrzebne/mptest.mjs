@@ -29,6 +29,7 @@ const info = (c) => ev(c, () => {
     remotes: mp ? [...mp.remotes.values()].map((r) => `${r.nick}:${r.seen ? (r.ghost ? 'ghost' : 'ok') : 'unseen'}`).join(' ') : '',
     alive: k.game.player.alive, mons: k.monsters.aliveCount, puppets: mp ? [...mp.byNid.values()].filter((m) => m.alive).length : 0,
     barrier: k.barrier.state + '@' + k.barrier.z.toFixed(1), me: k.player.pos.toArray().map((v) => +v.toFixed(1)).join('/'),
+    rbody: mp ? [...mp.remotes.values()].map((r) => r.body + '/' + r.costume).join(' ') : '',
     rpos: mp ? [...mp.remotes.values()].map((r) => r.pos.toArray().map((v) => +v.toFixed(1)).join('/') + (r.char.root.visible ? 'V' : 'H')).join(' ') : '', candy: k.profile.candy, kills: k.game.stats.kills, cuts: k.game.stats.cuts,
   };
 });
@@ -39,6 +40,10 @@ for (const c of clients) {
   await ev(c, () => { window.kindling.applyPreset('low'); window.kindling.profile.save = () => {}; });
 }
 console.log('booted', N);
+if (process.env.AVATAR) {
+  await clients[0].page.waitForFunction(() => window.kindling.avatar, null, { timeout: 60000 });
+  await ev(clients[0], () => { const k = window.kindling; k.profile.data.equipped.body = 'jurek'; k.profile.data.equipped.costume = 'witch'; k.applyLook(); });
+}
 
 const A = clients[0];
 await A.page.click('#btn-play');
