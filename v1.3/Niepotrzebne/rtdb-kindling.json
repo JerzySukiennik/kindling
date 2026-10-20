@@ -1,0 +1,87 @@
+{
+  "index": {
+    ".read": "auth != null",
+    ".indexOn": ["u"],
+    "$sid": {
+      ".write": "auth != null && $sid.length <= 6",
+      ".validate": "newData.hasChildren(['n', 'c', 'p', 'r', 'u'])",
+      "n": { ".validate": "newData.isString() && newData.val().length <= 40" },
+      "c": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 4" },
+      "p": { ".validate": "newData.isString() && newData.val().length <= 12" },
+      "r": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 1000" },
+      "u": { ".validate": "newData.isNumber() && newData.val() <= now + 60000" },
+      "pv": { ".validate": "newData.isBoolean()" },
+      "nk": { ".validate": "newData.isString() && newData.val().length <= 90" },
+      "$other": { ".validate": false }
+    }
+  },
+  "servers": {
+    "$sid": {
+      ".read": "auth != null",
+      ".write": "auth != null && !newData.exists() && !data.child('players').exists()",
+      "meta": {
+        "host": {
+          ".write": "auth != null && newData.val() === auth.uid && (!data.exists() || data.val() === auth.uid || !data.parent().parent().child('players').child(data.val()).exists())",
+          ".validate": "newData.isString()"
+        },
+        "pv": {
+          ".write": "auth != null && !data.exists()",
+          ".validate": "newData.isBoolean()"
+        },
+        "c": {
+          ".write": "auth != null && !data.exists()",
+          ".validate": "newData.isNumber()"
+        }
+      },
+      "players": {
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.hasChildren(['n', 'j'])",
+          "n": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 14" },
+          "j": { ".validate": "newData.isNumber()" },
+          "lk": { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "rd": { ".validate": "newData.isBoolean()" },
+          "$other": { ".validate": false }
+        }
+      },
+      "st": {
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.isString() && newData.val().length <= 240"
+        }
+      },
+      "host": {
+        ".write": "auth != null && data.parent().child('meta/host').val() === auth.uid"
+      },
+      "ev": {
+        ".indexOn": ["t"],
+        "$e": {
+          ".write": "auth != null && (!newData.exists() || newData.child('by').val() === auth.uid)",
+          ".validate": "!newData.exists() || (newData.hasChildren(['k', 'by', 't']) && newData.child('k').isString() && newData.child('k').val().length <= 12)"
+        }
+      }
+    }
+  },
+  "lb": {
+    ".read": "auth != null",
+    "teams": {
+      ".indexOn": ["r"],
+      "$k": {
+        ".write": "auth != null && !data.exists()",
+        ".validate": "newData.hasChildren(['r', 'n', 't']) && newData.child('r').isNumber() && newData.child('r').val() >= 1 && newData.child('r').val() < 1000 && newData.child('n').isString() && newData.child('n').val().length <= 80 && newData.child('t').isNumber()"
+      }
+    },
+    "players": {
+      ".indexOn": ["r"],
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['n', 'r', 's', 't'])",
+        "n": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 14" },
+        "r": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 1000" },
+        "s": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 1000000" },
+        "t": { ".validate": "newData.isNumber()" },
+        "$other": { ".validate": false }
+      }
+    }
+  }
+}

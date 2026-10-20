@@ -1,0 +1,31 @@
+import { createRequire } from 'module';
+const require = createRequire('/Users/jurek/Downloads/Claude/Projects/SatisFarm/node_modules/');
+const { chromium } = require('playwright-core');
+const browser = await chromium.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
+const page = await browser.newPage({ viewport: { width: 1440, height: 860 } });
+await page.goto('http://localhost:8613/');
+await page.waitForFunction(() => window.kindling, null, { timeout: 180000, polling: 500 });
+await page.evaluate(async () => { const k = window.kindling; k.game.bot = true; await k.startGame(); k.sim(34); });
+console.log(await page.evaluate(() => { const k = window.kindling; return JSON.stringify({ phase: k.game.phase, alive: k.monsters.aliveCount, chunks: k.debris.chunks.length }); }));
+const client = await page.context().newCDPSession(page);
+await client.send('Profiler.enable');
+await client.send('Profiler.setSamplingInterval', { interval: 200 });
+await client.send('Profiler.start');
+const ms = await page.evaluate(() => { const k = window.kindling; const t0 = performance.now(); for (let i = 0; i < 120; i++) k.tick(1 / 60); return (performance.now() - t0) / 120; });
+const { profile } = await client.send('Profiler.stop');
+console.log('avg tick ms (CPU, no GPU wait):', ms.toFixed(2));
+const byId = new Map(profile.nodes.map((n) => [n.id, n]));
+const self = new Map();
+const total = profile.samples.length;
+const counts = new Map();
+for (const s of profile.samples) counts.set(s, (counts.get(s) || 0) + 1);
+for (const [id, c] of counts) { const n = byId.get(id); const key = `${n.callFrame.functionName || '(anon)'} ${n.callFrame.url.split('/').slice(-2).join('/')}:${n.callFrame.lineNumber + 1}`; self.set(key, (self.get(key) || 0) + c); }
+const top = [...self.entries()].sort((a, b) => b[1] - a[1]).slice(0, 30);
+for (const [k, c] of top) console.log(((c / total) * 100).toFixed(1).padStart(5) + '%  ' + k);
+const parents = new Map();
+for (const n of profile.nodes) for (const ch of n.children || []) parents.set(ch, n.id);
+const incl = new Map();
+for (const [id, c] of counts) { let cur = id; const seen = new Set(); while (cur !== undefined) { const n = byId.get(cur); const key = `${n.callFrame.functionName || '(anon)'} ${n.callFrame.url.split('/').slice(-2).join('/')}:${n.callFrame.lineNumber + 1}`; if (!seen.has(key)) { incl.set(key, (incl.get(key) || 0) + c); seen.add(key); } cur = parents.get(cur); } }
+console.log('--- inclusive (game files)');
+for (const [k, c] of [...incl.entries()].filter(([k]) => /src\//.test(k) || /three\.module|three\.core/.test(k) && /render|project|Shadow/.test(k)).sort((a, b) => b[1] - a[1]).slice(0, 30)) console.log(((c / total) * 100).toFixed(1).padStart(5) + '%  ' + k);
+await browser.close();
