@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kindling</title>
+<meta name="description" content="Cut the stick monsters with your laser before they reach you, then jump the wave of wood that burns behind you.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Barlow+Condensed:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="src/ui/hud.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Cpath d=%22M12 1.5c1.2 0 2.2 2 3.6 6.3 1.3 4.1 2.6 8.7 2.8 10.8.2 2.3-2.9 3.9-6.4 3.9s-6.6-1.6-6.4-3.9c.2-2.1 1.5-6.7 2.8-10.8C9.8 3.5 10.8 1.5 12 1.5z%22 fill=%22%23ff8a1f%22/%3E%3C/svg%3E">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+    "rapier": "https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.19.3/rapier.mjs"
+  }
+}
+</script>
+</head>
+<body>
+<div id="view"></div>
+
+<div id="gl-lost" class="screen hidden"><div class="title small">Graphics reset</div><div class="sub">The GPU driver restarted. Restoring the game.</div></div>
+
+<div id="loading" class="screen">
+  <canvas id="load-embers"></canvas>
+  <div class="load-moon"></div>
+  <div class="load-fog"></div>
+  <div class="title load-title">Kindling</div>
+  <div class="fuse"><i id="load-bar"></i><b id="load-spark"></b></div>
+  <div id="load-text" class="sub">Gathering sticks</div>
+  <div id="load-tip" class="load-tip"></div>
+  <svg class="load-walker" viewBox="0 0 120 160" aria-hidden="true">
+    <g stroke="#5c4632" stroke-width="5" stroke-linecap="round" fill="none" style="filter: drop-shadow(0 0 3px rgba(255,140,40,0.35))">
+      <line x1="60" y1="70" x2="58" y2="28"/>
+      <line x1="44" y1="34" x2="74" y2="32"/>
+      <line x1="50" y1="70" x2="70" y2="70"/>
+      <g class="lw-arm a1"><line x1="74" y1="32" x2="96" y2="50"/><line x1="96" y1="50" x2="108" y2="44"/></g>
+      <g class="lw-arm a2"><line x1="44" y1="34" x2="30" y2="56"/><line x1="30" y1="56" x2="20" y2="52"/></g>
+      <g class="lw-leg l1"><line x1="66" y1="70" x2="74" y2="112"/><line x1="74" y1="112" x2="70" y2="152"/></g>
+      <g class="lw-leg l2"><line x1="54" y1="70" x2="46" y2="112"/><line x1="46" y1="112" x2="52" y2="152"/></g>
+      <line x1="58" y1="28" x2="60" y2="16"/>
+      <path d="M48 8 L72 22 M70 4 L50 20 M58 2 L60 22"/>
+    </g>
+    <circle cx="55" cy="13" r="2.4" fill="#ffb347"/><circle cx="64" cy="12" r="2.4" fill="#ffb347"/>
+  </svg>
+</div>
+<script>
+(() => {
+  const tips = [
+    'Thick branches take longer to burn through. Hold the beam steady.',
+    'Cut one leg and they limp. Cut both and they crawl.',
+    'No arms, no grab. A stick without hands cannot take you.',
+    'The barrier only pushes. The fire is what kills.',
+    'Jump the barrier and the pile of sticks in front of it.',
+    'Hold the right mouse button to zoom on distant twigs.',
+    'Candy & Curses sells lasers that split, jump and saw.',
+    'Ring the chapel bell when you are ready for the night.',
+    'Press R on the hill to buy yourself another minute.',
+    'Every stick you cut ends up in the fire behind you.',
+  ];
+  const tipEl = document.getElementById('load-tip');
+  let ti = Math.floor(Math.random() * tips.length);
+  const showTip = () => { tipEl.classList.remove('on'); setTimeout(() => { tipEl.textContent = tips[ti++ % tips.length]; tipEl.classList.add('on'); }, 350); };
+  showTip();
+  const tipTimer = setInterval(showTip, 4200);
+  const cv = document.getElementById('load-embers');
+  const ctx = cv.getContext('2d');
+  const spark = document.getElementById('load-spark');
+  const P = [];
+  const fit = () => { cv.width = innerWidth * devicePixelRatio; cv.height = innerHeight * devicePixelRatio; };
+  fit();
+  addEventListener('resize', fit);
+  let last = performance.now();
+  const loop = (t) => {
+    const load = document.getElementById('loading');
+    if (load.classList.contains('hidden')) { clearInterval(tipTimer); return; }
+    const dt = Math.min(0.05, (t - last) / 1000);
+    last = t;
+    const r = spark.getBoundingClientRect();
+    const sx = (r.left + r.width / 2) * devicePixelRatio;
+    const sy = (r.top + r.height / 2) * devicePixelRatio;
+    for (let i = 0; i < 3; i++) P.push({ x: sx, y: sy, vx: (Math.random() - 0.5) * 40, vy: -30 - Math.random() * 70, l: 1, d: 0.5 + Math.random() * 1.4, s: 0.6 + Math.random() * 1.6 });
+    if (Math.random() < 0.4) P.push({ x: Math.random() * cv.width, y: cv.height + 10, vx: (Math.random() - 0.5) * 20, vy: -20 - Math.random() * 40, l: 1, d: 4 + Math.random() * 4, s: 0.5 + Math.random() * 1.2 });
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = P.length - 1; i >= 0; i--) {
+      const p = P[i];
+      p.l -= dt / p.d;
+      if (p.l <= 0) { P.splice(i, 1); continue; }
+      p.vx += (Math.random() - 0.5) * 30 * dt;
+      p.x += p.vx * dt * devicePixelRatio;
+      p.y += p.vy * dt * devicePixelRatio;
+      const a = p.l * (0.6 + 0.4 * Math.sin(t * 0.02 + i));
+      const rr = p.s * devicePixelRatio * 2.2;
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, rr * 3);
+      g.addColorStop(0, `rgba(255,190,90,${a})`);
+      g.addColorStop(0.35, `rgba(255,110,20,${a * 0.5})`);
+      g.addColorStop(1, 'rgba(255,60,0,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(p.x - rr * 3, p.y - rr * 3, rr * 6, rr * 6);
+    }
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+})();
+</script>
+
+<div id="menu" class="screen hidden">
+  <div class="menu-veil"></div>
+  <canvas class="menu-embers"></canvas>
+  <div class="menu-letterbox top"></div>
+  <div class="menu-letterbox bottom"></div>
+  <div class="title">Kindling</div>
+  <div class="title-line"><b></b></div>
+  <div class="tag">They are made of sticks. Sticks burn.</div>
+  <div class="menu-buttons">
+    <button id="btn-play" class="btn primary">Play</button>
+    <button id="btn-settings" class="btn">Settings</button>
+  </div>
+  <div class="menu-foot">
+    <span class="candy-wallet"><svg class="cc"><use href="#candy"/></svg><b id="menu-candy">0</b></span>
+    <span id="menu-best"></span>
+  </div>
+  <div class="controls-hint">WASD move · Mouse aim · LMB laser · RMB zoom · Space jump · E use · 1-4 emotes · Esc pause</div>
+</div>
+
+<div id="settings" class="screen panel hidden">
+  <div class="panel-title">Settings</div>
+  <label class="row"><span>Graphics</span>
+    <select id="set-quality">
+      <option value="auto">Auto</option>
+      <option value="low">Low</option>
+      <option value="medium">Medium</option>
+      <option value="high">High</option>
+      <option value="ultra">Ultra</option>
+    </select>
+  </label>
+  <label class="row"><span>Music volume</span><input id="set-music" type="range" min="0" max="1" step="0.01"></label>
+  <label class="row"><span>Effects volume</span><input id="set-sfx" type="range" min="0" max="1" step="0.01"></label>
+  <label class="row"><span>Mouse sensitivity</span><input id="set-sens" type="range" min="0.2" max="2.5" step="0.05"></label>
+  <div class="row"><span>Night music</span>
+    <div class="row-right">
+      <span id="music-name" class="dim">None</span>
+      <button id="btn-music" class="btn small">Load file</button>
+      <button id="btn-music-clear" class="btn small ghost">Reset</button>
+      <input id="music-file" type="file" accept="audio/*" hidden>
+    </div>
+  </div>
+  <div class="row"><span>Hill music</span>
+    <div class="row-right">
+      <span id="lobby-music-name" class="dim">None</span>
+      <button id="btn-lobby-music" class="btn small">Load file</button>
+      <button id="btn-lobby-music-clear" class="btn small ghost">Reset</button>
+      <input id="lobby-music-file" type="file" accept="audio/*" hidden>
+    </div>
+  </div>
+  <button id="btn-settings-back" class="btn">Back</button>
+</div>
+
+<div id="servers" class="screen panel hidden">
+  <div class="panel-title">Graveyards</div>
+  <div class="sv-box">
+    <div class="sv-row-top">
+      <label class="sv-nick"><span>Your name</span><input id="sv-nick" maxlength="14" spellcheck="false" autocomplete="off"></label>
+      <button id="sv-dice" class="btn small" title="Random name">Random</button>
+    </div>
+    <div class="sv-row-top">
+      <button id="sv-quick" class="btn primary">Quick play</button>
+      <button id="sv-create" class="btn">New server</button>
+      <label class="sv-priv"><input type="checkbox" id="sv-private"><span>Private</span></label>
+      <span class="sv-spacer"></span>
+      <input id="sv-code" class="sv-code" maxlength="4" placeholder="CODE" spellcheck="false" autocomplete="off">
+      <button id="sv-join" class="btn">Join</button>
+    </div>
+    <div class="sv-head"><span>Code</span><span>Hill</span><span>Keepers</span><span>Status</span><span></span></div>
+    <div id="sv-list" class="sv-list"></div>
+    <div id="sv-status" class="sv-status"></div>
+    <div class="sv-row-top sv-foot">
+      <button id="sv-solo" class="btn ghost">Play solo, offline</button>
+      <span class="sv-spacer"></span>
+      <button id="sv-back" class="btn ghost">Back</button>
+    </div>
+  </div>
+</div>
+
+<div id="pause" class="screen hidden">
+  <div class="title small">Paused</div>
+  <div id="pause-server" class="sub hidden"></div>
+  <div class="menu-buttons">
+    <button id="btn-resume" class="btn primary">Resume</button>
+    <button id="btn-pause-settings" class="btn">Settings</button>
+    <button id="btn-quit" class="btn ghost">Quit to menu</button>
+  </div>
+</div>
+
+<div id="gameover" class="screen hidden">
+  <div class="title small">The fire went out</div>
+  <div class="stats">
+    <div><b id="go-round">0</b><span>rounds survived</span></div>
+    <div><b id="go-sticks">0</b><span>sticks burned</span></div>
+    <div><b id="go-candy">0</b><span>candy corn earned</span></div>
+  </div>
+  <div class="menu-buttons">
+    <button id="btn-again" class="btn primary">Back to the hill</button>
+    <button id="btn-go-menu" class="btn ghost">Menu</button>
+  </div>
+</div>
+
+<div id="hud" class="hidden">
+  <div id="hud-top">
+    <div id="hud-round">Round 1</div>
+    <div id="hud-status"></div>
+  </div>
+  <div id="crosshair">
+    <svg viewBox="-50 -50 100 100">
+      <circle class="heat-bg" r="22"/>
+      <circle id="heat-arc" class="heat" r="22"/>
+      <circle class="dot" r="1.6"/>
+    </svg>
+  </div>
+  <div id="hud-candy"><svg class="cc"><use href="#candy"/></svg><b id="candy-count">0</b></div>
+  <div id="hud-msg"></div>
+  <div id="hud-sub"></div>
+  <div id="hud-ghost" class="hidden">You were taken. Back next round.</div>
+  <div id="hud-click" class="hidden">Click to play</div>
+  <div id="popups"></div>
+  <div id="hud-prompt" class="hidden"><kbd>E</kbd><span></span></div>
+  <div id="hud-abilities"></div>
+  <div id="hud-timer" class="hidden"></div>
+  <div id="hud-debug" class="hidden"></div>
+  <div id="hud-roster" class="hidden"></div>
+  <div id="hud-feed"></div>
+</div>
+<div id="name-tags"></div>
+
+<div id="shop" class="hidden"></div>
+<div id="fade"></div>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="ccg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff6e6"/>
+      <stop offset="0.33" stop-color="#fff6e6"/>
+      <stop offset="0.34" stop-color="#ff8a1f"/>
+      <stop offset="0.66" stop-color="#ff8a1f"/>
+      <stop offset="0.67" stop-color="#ffd23a"/>
+      <stop offset="1" stop-color="#ffd23a"/>
+    </linearGradient>
+    <symbol id="candy" viewBox="0 0 24 24">
+      <path d="M12 1.5c1.2 0 2.2 2 3.6 6.3 1.3 4.1 2.6 8.7 2.8 10.8.2 2.3-2.9 3.9-6.4 3.9s-6.6-1.6-6.4-3.9c.2-2.1 1.5-6.7 2.8-10.8C9.8 3.5 10.8 1.5 12 1.5z" fill="url(#ccg)"/>
+    </symbol>
+  </defs>
+</svg>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
