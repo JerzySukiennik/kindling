@@ -31,10 +31,11 @@ import { MenuDirector } from './ui/menu.js';
 import { Net } from './net/net.js';
 import { Multiplayer } from './game/mp.js';
 import { ServersUI } from './ui/servers.js';
+import { YTMusic } from './engine/ytmusic.js';
 
 const $ = (id) => document.getElementById(id);
 const SETTINGS_KEY = 'kindling.settings';
-const settings = Object.assign({ quality: 'auto', music: 0.55, sfx: 0.85, sens: 1 }, (() => {
+const settings = Object.assign({ quality: 'auto', music: 0.55, sfx: 0.85, sens: 1, yt: true }, (() => {
   try { return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; } catch (e) { return {}; }
 })());
 const saveSettings = () => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { /* blocked */ } };
@@ -100,6 +101,8 @@ async function boot() {
   const baseChar = player.char;
   const hud = new HUD();
   const audio = new Audio();
+  audio.yt = new YTMusic($('yt-box'));
+  audio.ytOn = settings.yt !== false;
   const input = new Input(R.renderer.domElement);
   input.sensitivity = settings.sens;
   const game = new Game({ scene, camera, renderer: R, sticks, debris, monsters, barrier, bonfire, player, laserFX, laserFX2, laserFX3, particles, audio, hud, physics, props, lobby, profile });
@@ -133,8 +136,8 @@ async function boot() {
   applyPreset(settings.quality);
   window.addEventListener('resize', () => particles.setScale(R.renderer.domElement.height, camera.fov));
   audio.setVolumes(settings.music, settings.sfx);
-  audio.setupMusic().then(() => { $('music-name').textContent = audio.musicName; audio.analyzeIntro(); });
-  audio.setupLobby().then(() => { $('lobby-music-name').textContent = audio.lobbyName; });
+  audio.setupMusic().then(() => { $('music-name').textContent = audio.musicLabel; audio.analyzeIntro(); });
+  audio.setupLobby().then(() => { $('lobby-music-name').textContent = audio.lobbyLabel; });
   if (!new URLSearchParams(location.search).get('reel')) AvatarCharacter.load(scene, 'assets/avatar/jurek.glb', profile.beamColor()).then(async (a) => {
     avatarChar = a;
     shopUI.extraCostumes = [{ id: 'jurek', name: 'Jurek', desc: 'The keeper who made Kindling. RTFKT hoodie, H&M sweatpants, green Crocs.', price: 0, free: true }];
@@ -295,7 +298,9 @@ async function boot() {
     $('set-music').value = settings.music;
     $('set-sfx').value = settings.sfx;
     $('set-sens').value = settings.sens;
-    $('music-name').textContent = audio.musicName;
+    $('set-yt').checked = settings.yt !== false;
+    $('lobby-music-name').textContent = audio.lobbyLabel;
+    $('music-name').textContent = audio.musicLabel;
     show(from, false);
     show('settings', true);
   };
@@ -340,7 +345,7 @@ async function boot() {
     hud.timer(null);
     hud.prompt(null);
     hud.abilities([]);
-    if (audio.ready) { audio.toMatch(); if (audio.music) audio.music.pause(); if (audio.lobbyEl) audio.lobbyEl.pause(); }
+    if (audio.ready) { audio.toMatch(); audio.stopMusic(); }
     barrier.reset();
     props.restoreCandles();
     laserFX.update(0, 0, false, camera.position, camera.position, false);
@@ -357,17 +362,26 @@ async function boot() {
   $('set-music').oninput = (e) => { settings.music = +e.target.value; audio.setVolumes(settings.music, settings.sfx); saveSettings(); };
   $('set-sfx').oninput = (e) => { settings.sfx = +e.target.value; audio.setVolumes(settings.music, settings.sfx); saveSettings(); };
   $('set-sens').oninput = (e) => { settings.sens = +e.target.value; input.sensitivity = settings.sens; saveSettings(); };
+  $('set-yt').onchange = (e) => {
+    settings.yt = e.target.checked;
+    saveSettings();
+    audio.ytOn = settings.yt;
+    $('music-name').textContent = audio.musicLabel;
+    $('lobby-music-name').textContent = audio.lobbyLabel;
+    if (!settings.yt) { if (audio.yt) audio.yt.pause(); return; }
+    if (mode === 'play' && audio.ready) { if (game.phase === 'lobby') audio.toLobby(); else audio.restartMusic(); }
+  };
   $('btn-music').onclick = () => $('music-file').click();
   $('music-file').onchange = async (e) => {
     const f = e.target.files[0];
     if (!f) return;
     await audio.init();
     await audio.setUserTrack(f);
-    $('music-name').textContent = audio.musicName;
+    $('music-name').textContent = audio.musicLabel;
   };
   $('btn-music-clear').onclick = async () => {
     await audio.setUserTrack(null);
-    $('music-name').textContent = audio.musicName;
+    $('music-name').textContent = audio.musicLabel;
   };
   $('btn-lobby-music').onclick = () => $('lobby-music-file').click();
   $('lobby-music-file').onchange = async (e) => {
@@ -375,11 +389,11 @@ async function boot() {
     if (!f) return;
     await audio.init();
     await audio.setLobbyTrack(f);
-    $('lobby-music-name').textContent = audio.lobbyName;
+    $('lobby-music-name').textContent = audio.lobbyLabel;
   };
   $('btn-lobby-music-clear').onclick = async () => {
     await audio.setLobbyTrack(null);
-    $('lobby-music-name').textContent = audio.lobbyName;
+    $('lobby-music-name').textContent = audio.lobbyLabel;
   };
   window.addEventListener('keydown', (e) => {
     if (e.code === 'F3') { showDebug = !showDebug; hud.debug(''); }

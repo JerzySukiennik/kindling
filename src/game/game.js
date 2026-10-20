@@ -351,7 +351,7 @@ export class Game {
       if (this.mp) this.mp.event('slow');
     }
     if (control && arena && P.has('abilities', 'spikes') && input.hit('KeyF') && this.spikeCharges > 0) this.placeSpikes();
-    if (this.audio.music) this.audio.music.playbackRate = this.slowT > 0 ? 0.82 : 1;
+    this.audio.setRate(this.slowT > 0 ? 0.82 : 1);
     this.renderer.final.uniforms.uGhost.value = Math.max(this.player.alive ? 0 : 1, this.slowT > 0 ? 0.35 : 0);
     const list = [];
     if (P.has('abilities', 'slow')) list.push({ key: 'Q', name: 'Slow', state: this.slowT > 0 ? 'active' : this.slowCD <= 0 ? 'ready' : '', cd: this.slowT > 0 ? 0 : this.slowCD / 30 });

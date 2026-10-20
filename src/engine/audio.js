@@ -1,3 +1,4 @@
+import { TRACKS } from './ytmusic.js';
 const DB = 'kindling';
 const STORE = 'music';
 
@@ -506,8 +507,24 @@ export class Audio {
     if (this.music) { try { await this.music.play(); } catch (e) { /* autoplay blocked */ } }
   }
 
+  get ytMatch() { return !!this.yt && this.ytOn && !this.music && !this.yt.failed; }
+  get ytLobby() { return !!this.yt && this.ytOn && !this.lobbyEl && !this.yt.failed; }
+  get musicLabel() { return this.music ? this.musicName : this.yt && this.ytOn ? 'Thriller, official YouTube' : 'None'; }
+  get lobbyLabel() { return this.lobbyEl ? this.lobbyName : this.yt && this.ytOn ? 'Ghostbusters, official YouTube' : 'None'; }
+
+  setRate(r) {
+    if (this.music && this.music.playbackRate !== r) this.music.playbackRate = r;
+    if (this.yt && this.ytMatch && this.yt.track === 'thriller') this.yt.setRate(r === 1 ? 1 : 0.75);
+  }
+
+  stopMusic() {
+    if (this.music) this.music.pause();
+    if (this.lobbyEl) this.lobbyEl.pause();
+    if (this.yt) this.yt.pause();
+  }
+
   async analyzeIntro() {
-    if (!this.musicUrl) return null;
+    if (!this.musicUrl) { this.introHit = this.ytMatch ? TRACKS.thriller.intro : null; return this.introHit; }
     if (this.introUrl === this.musicUrl) return this.introHit;
     if (this.introJob && this.introJobUrl === this.musicUrl) return this.introJob;
     this.introJobUrl = this.musicUrl;
@@ -560,20 +577,29 @@ export class Audio {
   }
 
   beatNow(fallbackT) {
+    if (this.yt && this.yt.track) {
+      const b = this.scene === 'match' && this.ytMatch ? this.yt.beat('thriller') : this.scene === 'lobby' && this.ytLobby ? this.yt.beat('ghostbusters') : null;
+      if (b !== null) return b;
+    }
     if (this.scene === 'match' && this.music && !this.music.paused) return (this.music.currentTime - 41.75) / 0.5068;
     if (this.scene === 'lobby' && this.lobbyEl && !this.lobbyEl.paused) return this.lobbyEl.currentTime / 0.5172;
     return fallbackT / 0.5068;
   }
 
-  get musicTime() { return this.music && !this.music.paused ? this.music.currentTime : null; }
+  get musicTime() {
+    if (this.ytMatch) return this.yt.track === 'thriller' && this.yt.playing ? this.yt.time() : null;
+    return this.music && !this.music.paused ? this.music.currentTime : null;
+  }
 
   restartMusic() {
+    if (this.ytMatch && this.ready) { this.yt.play('thriller', 0); return; }
     if (!this.music) return;
     try { this.music.currentTime = 0; } catch (e) { /* not seekable yet */ }
     this.music.play().catch(() => {});
   }
 
   musicTransient(dt) {
+    if (this.ytMatch) return this.yt.track === 'thriller' ? this.yt.transient() : 0;
     if (!this.analyser || !this.music || this.music.paused) return 0;
     this.analyser.getFloatTimeDomainData(this.anBuf);
     let s = 0;
@@ -646,6 +672,8 @@ export class Audio {
     this.lobbyGain.gain.cancelScheduledValues(t);
     this.lobbyGain.gain.setTargetAtTime(this.vol.music, t, 0.6);
     if (this.lobbyEl) this.lobbyEl.play().catch(() => {});
+    if (this.ytLobby) this.yt.play('ghostbusters', 0);
+    else if (this.yt && this.yt.track === 'thriller') this.yt.pause();
     clearTimeout(this.pauseT);
     this.pauseT = setTimeout(() => { if (this.scene === 'lobby' && this.music) this.music.pause(); }, 2500);
   }
@@ -653,6 +681,7 @@ export class Audio {
   async toMatch() {
     this.scene = 'match';
     if (!this.ctx) return;
+    if (this.yt && this.yt.track === 'ghostbusters') this.yt.pause();
     const t = this.ctx.currentTime;
     this.lobbyGain.gain.cancelScheduledValues(t);
     this.lobbyGain.gain.setTargetAtTime(0, t, 0.3);
@@ -668,5 +697,6 @@ export class Audio {
     if (this.musicGain) this.musicGain.gain.value = music;
     if (this.lobbyGain && this.scene === 'lobby') this.lobbyGain.gain.value = music;
     if (this.sfx) this.sfx.gain.value = sfx;
+    if (this.yt) this.yt.setVolume(music);
   }
 }
